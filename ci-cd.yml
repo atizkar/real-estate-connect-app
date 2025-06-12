@@ -1,0 +1,103 @@
+name: Build, Containerize & Deploy Real Estate App
+
+on:
+  push:
+    branches:
+      - main # Trigger this workflow when code is pushed to the 'main' branch
+  pull_request:
+    branches:
+      - main # Also run on pull requests targeting 'main'
+
+env:
+  # Replace with your GitHub username or organization name
+  GHCR_USERNAME: ${{ github.actor }}
+  # The name of your Docker image
+  IMAGE_NAME: real-estate-connect-app
+  # Your Firebase config and Gemini API key for the build environment
+  # IMPORTANT: Store these as GitHub Secrets, NOT hardcoded here.
+  FIREBASE_CONFIG_VAR: ${{ secrets.FIREBASE_CONFIG }}
+  APP_ID_VAR: ${{ secrets.FIREBASE_APP_ID }}
+  AUTH_TOKEN_VAR: ${{ secrets.FIREBASE_AUTH_TOKEN }} # If applicable for CI build/test
+  GEMINI_API_KEY_VAR: ${{ secrets.GEMINI_API_KEY }}
+
+jobs:
+  build-and-push-docker:
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+
+    permissions:
+      contents: read
+      packages: write # Necessary to push Docker images to GitHub Container Registry
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Match your Node.js version used in Dockerfile
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3 # Required for building multi-architecture images
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3 # Better builder for Docker
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USERNAME }}
+          # Uses the GITHUB_TOKEN which has permissions to push to GHCR for the repo
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current date for image tag
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y%m%d%H%M%S')" # Using '::set-output' for GitHub Actions prior to Node 16 runner, or for compatibility
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ env.GHCR_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ghcr.io/${{ env.GHCR_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.date.outputs.date }}
+          # Pass environment variables to the Docker build process
+          # Create React App needs REACT_APP_ prefix for client-side env vars
+          build-args: |
+            REACT_APP_FIREBASE_CONFIG=${{ env.FIREBASE_CONFIG_VAR }}
+            REACT_APP_APP_ID=${{ env.APP_ID_VAR }}
+            REACT_APP_INITIAL_AUTH_TOKEN=${{ env.AUTH_TOKEN_VAR }}
+            REACT_APP_GEMINI_API_KEY=${{ env.GEMINI_API_KEY_VAR }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push-docker # This job will run only after the build-and-push job succeeds
+    runs-on: ubuntu-latest
+    environment: production # Link to a GitHub Environments (optional but good practice)
+
+    steps:
+      - name: SSH and Deploy to Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }} # Your server's IP address or hostname
+          username: ${{ secrets.SSH_USERNAME }} # Your SSH username
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # Your SSH private key
+          script: |
+            echo "Deploying Real Estate Connect App..."
+            # Log in to GitHub Container Registry on your server
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ env.GHCR_USERNAME }} --password-stdin
+
+            # Stop the currently running container (if any)
+            docker stop ${{ env.IMAGE_NAME }} || true
+            docker rm ${{ env.IMAGE_NAME }} || true
+
+            # Pull the latest image
+            docker pull ghcr.io/${{ env.GHCR_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+            # Run the new container
+            docker run -d --restart always --name ${{ env.IMAGE_NAME }} -p 80:80 ghcr.io/${{ env.GHCR_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+            echo "Deployment complete!"
