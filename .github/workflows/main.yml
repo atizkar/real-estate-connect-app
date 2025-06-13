@@ -3,10 +3,10 @@ name: Build, Containerize & Deploy Real Estate App
 on:
   push:
     branches:
-      - main # Trigger this workflow when code is pushed to the 'main' branch
+      - Dev # Trigger this workflow when code is pushed to the 'Dev' branch
   pull_request:
     branches:
-      - main # Also run on pull requests targeting 'main'
+      - Dev # Also run on pull requests targeting 'Dev'
 
 env:
   # Replace with your GitHub username or organization name
