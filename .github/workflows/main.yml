@@ -1,7 +1,7 @@
 name: Build and Push Docker Image to Docker Hub
 
 on:
-  commit_comment:
+  push:
     branches:
       - dev # Trigger this workflow when code is pushed to the 'dev' branch
   pull_request:
