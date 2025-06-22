@@ -153,7 +153,7 @@ function App() {
         {/* Footer */}
         <footer className="bg-gray-800 text-white text-center p-4 text-sm mt-8">
           <div className="container mx-auto">
-            © 2025 RealEstateConnect. All rights reserved. Providing solutions for your real estate journey.
+            © 2025 RealEstateConnect. All rights reserved. ارائه راهکارهایی برای سفر املاک و مستغلات شما.
           </div>
         </footer>
       </div>
