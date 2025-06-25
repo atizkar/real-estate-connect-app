@@ -1,6 +1,12 @@
 # --- STAGE 1: Build the React Application ---
-# Changed base image from node:20-alpine to full node:20 (Debian-based)
 FROM node:20 AS build-stage
+
+# Declare build arguments that will receive values from 'docker build --build-arg'
+# These ARG instructions allow Docker to receive the values from the `build-args` in ci-cd.yml.
+ARG REACT_APP_FIREBASE_CONFIG
+ARG REACT_APP_APP_ID
+ARG REACT_APP_INITIAL_AUTH_TOKEN
+ARG REACT_APP_GEMINI_API_KEY # <--- New: Declare ARG for Gemini API Key
 
 # Set the working directory in the container
 WORKDIR /app
@@ -15,8 +21,13 @@ RUN npm ci
 COPY . .
 
 # Build the React application
-# 'npm run build' should now work as expected in the more complete Node.js environment
-RUN npm run build
+# IMPORTANT: Pass the declared ARG values as environment variables to the 'npm run build' command.
+# This ensures Create React App can read them and embed their values into the bundle.
+RUN REACT_APP_FIREBASE_CONFIG=$REACT_APP_FIREBASE_CONFIG \
+    REACT_APP_APP_ID=$REACT_APP_APP_ID \
+    REACT_APP_INITIAL_AUTH_TOKEN=$REACT_APP_INITIAL_AUTH_TOKEN \
+    REACT_APP_GEMINI_API_KEY=$REACT_APP_GEMINI_API_KEY \
+    npm run build
 
 # --- STAGE 2: Serve the Application with Nginx ---
 # We can keep nginx:stable-alpine as it's efficient for serving static files
