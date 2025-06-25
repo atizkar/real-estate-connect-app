@@ -5,7 +5,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 
-// Context for Firebase and User state
+// Context for Firebase and User state...
 const FirebaseContext = createContext(null);
 
 // Declare Canvas-specific global variables as potentially undefined constants for build-time safety
@@ -54,13 +54,6 @@ function App() {
       const initialAuthToken = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_INITIAL_AUTH_TOKEN)
         ? process.env.REACT_APP_INITIAL_AUTH_TOKEN
         : (__initial_auth_token || null); // Now __initial_auth_token is declared as a const
-
-      // --- DEBUGGING: Log the value of the API Key seen by the app ---
-      const debugGeminiApiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
-        ? "SET" // Don't log the actual key, just confirm it's set
-        : "NOT SET or undefined in process.env";
-      console.log(`DEBUG: REACT_APP_GEMINI_API_KEY seen by app: ${debugGeminiApiKey}`);
-      // --- END DEBUGGING ---
 
 
       if (Object.keys(firebaseConfig).length === 0) {
@@ -160,7 +153,7 @@ function App() {
         {/* Footer */}
         <footer className="bg-gray-800 text-white text-center p-4 text-sm mt-8">
           <div className="container mx-auto">
-            © 2025 RealEstateConnect. All rights reserved. Providing solutions for your real estate journey.
+            © 2025 RealEstateConnect. All rights reserved. ارائه راهکارهایی برای سفر املاک و مستغلات شما.
           </div>
         </footer>
       </div>
