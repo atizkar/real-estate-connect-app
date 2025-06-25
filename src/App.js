@@ -57,9 +57,9 @@ function App() {
 
       // --- DEBUGGING: Log the value of the API Key seen by the app ---
       const debugGeminiApiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
-        ? "SET" // Don't log the actual key, just confirm it's set
+        ? process.env.REACT_APP_GEMINI_API_KEY.substring(0, 5) + "..." // Log partial key to confirm it's not empty
         : "NOT SET or undefined in process.env";
-      console.log(`DEBUG: REACT_APP_GEMINI_API_KEY seen by app: ${debugGeminiApiKey}`);
+      console.log(`DEBUG: REACT_APP_GEMINI_API_KEY seen by app (first 5 chars): ${debugGeminiApiKey}`);
       // --- END DEBUGGING ---
 
 
@@ -294,7 +294,7 @@ const BuyerDashboard = () => {
       });
 
       const result = await response.json();
-      if (result.candidates && result.candidates.length > 0 &&
+      if (response.ok && result.candidates && result.candidates.length > 0 &&
           result.candidates[0].content && result.candidates[0].content.parts &&
           result.candidates[0].content.parts.length > 0) {
         const text = result.candidates[0].content.parts[0].text;
@@ -302,7 +302,8 @@ const BuyerDashboard = () => {
         setMessage("AI recommendation generated!");
         setMessageType('success');
       } else {
-        console.error("AI response structure unexpected:", result);
+        // Log the full error response if the request was not OK
+        console.error("AI response not OK or structure unexpected:", result);
         setAiResponse("Failed to get AI recommendation. Please try again.");
         setMessage("Failed to get AI recommendation. Please try again.");
         setMessageType('error');
@@ -462,7 +463,7 @@ const InvestorDashboard = () => {
       });
 
       const result = await response.json();
-      if (result.candidates && result.candidates.length > 0 &&
+      if (response.ok && result.candidates && result.candidates.length > 0 &&
           result.candidates[0].content && result.candidates[0].content.parts &&
           result.candidates[0].content.parts.length > 0) {
         const text = result.candidates[0].content.parts[0].text;
@@ -470,7 +471,8 @@ const InvestorDashboard = () => {
         setMessage("Investment strategy suggested!");
         setMessageType('success');
       } else {
-        console.error("AI response structure unexpected:", result);
+        // Log the full error response if the request was not OK
+        console.error("AI response not OK or structure unexpected:", result);
         setStrategySuggestion("Failed to get strategy suggestion. Please try again.");
         setMessage("Failed to get strategy suggestion. Please try again.");
         setMessageType('error');
