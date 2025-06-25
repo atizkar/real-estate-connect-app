@@ -6,7 +6,7 @@ FROM node:20 AS build-stage
 ARG REACT_APP_FIREBASE_CONFIG
 ARG REACT_APP_APP_ID
 ARG REACT_APP_INITIAL_AUTH_TOKEN
-ARG REACT_APP_GEMINI_API_KEY # <--- New: Declare ARG for Gemini API Key
+ARG REACT_APP_GEMINI_API_KEY # Declare ARG for Gemini API Key
 
 # Set the working directory in the container
 WORKDIR /app
@@ -20,14 +20,17 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
+# Generate .env.production file using the build arguments
+# This is the MOST reliable way for Create React App to pick up build-time environment variables.
+# We explicitly write the REACT_APP_ variables into a .env.production file.
+RUN echo "REACT_APP_FIREBASE_CONFIG=${REACT_APP_FIREBASE_CONFIG}" > .env.production && \
+    echo "REACT_APP_APP_ID=${REACT_APP_APP_ID}" >> .env.production && \
+    echo "REACT_APP_INITIAL_AUTH_TOKEN=${REACT_APP_INITIAL_AUTH_TOKEN}" >> .env.production && \
+    echo "REACT_APP_GEMINI_API_KEY=${REACT_APP_GEMINI_API_KEY}" >> .env.production
+
 # Build the React application
-# IMPORTANT: Pass the declared ARG values as environment variables to the 'npm run build' command.
-# This ensures Create React App can read them and embed their values into the bundle.
-RUN REACT_APP_FIREBASE_CONFIG=$REACT_APP_FIREBASE_CONFIG \
-    REACT_APP_APP_ID=$REACT_APP_APP_ID \
-    REACT_APP_INITIAL_AUTH_TOKEN=$REACT_APP_INITIAL_AUTH_TOKEN \
-    REACT_APP_GEMINI_API_KEY=$REACT_APP_GEMINI_API_KEY \
-    npm run build
+# Create React App will automatically load .env.production for the build.
+RUN npm run build
 
 # --- STAGE 2: Serve the Application with Nginx ---
 # We can keep nginx:stable-alpine as it's efficient for serving static files
