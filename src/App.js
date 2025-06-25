@@ -5,7 +5,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 
-// Context for Firebase and User state
+// Context for Firebase and User state...
 const FirebaseContext = createContext(null);
 
 // Declare Canvas-specific global variables as potentially undefined constants for build-time safety
