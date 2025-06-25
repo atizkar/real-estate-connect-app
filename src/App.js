@@ -56,10 +56,13 @@ function App() {
         : (__initial_auth_token || null); // Now __initial_auth_token is declared as a const
 
       // --- DEBUGGING: Log the value of the API Key seen by the app ---
-      const debugGeminiApiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
-        ? process.env.REACT_APP_GEMINI_API_KEY.substring(0, 5) + "..." // Log partial key to confirm it's not empty
-        : "NOT SET or undefined in process.env";
-      console.log(`DEBUG: REACT_APP_GEMINI_API_KEY seen by app (first 5 chars): ${debugGeminiApiKey}`);
+      const detectedGeminiApiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
+        ? process.env.REACT_APP_GEMINI_API_KEY
+        : null; // Use null if not set
+
+      console.log(`DEBUG: REACT_APP_GEMINI_API_KEY seen by app (first 5 chars): ${
+        detectedGeminiApiKey ? detectedGeminiApiKey.substring(0, 5) + "..." : "NOT SET or undefined in process.env"
+      }`);
       // --- END DEBUGGING ---
 
 
@@ -284,7 +287,8 @@ const BuyerDashboard = () => {
       // Use process.env.REACT_APP_GEMINI_API_KEY for API key
       const apiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
         ? process.env.REACT_APP_GEMINI_API_KEY
-        : "";
+        : ""; // Ensure this fallback is handled if key is truly not set
+
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
       const response = await fetch(apiUrl, {
