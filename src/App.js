@@ -289,7 +289,7 @@ const BuyerDashboard = () => {
         ? process.env.REACT_APP_GEMINI_API_KEY
         : ""; // Ensure this fallback is handled if key is truly not set
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',
