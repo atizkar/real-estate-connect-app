@@ -5,7 +5,7 @@ FROM node:20 AS build-stage
 ARG REACT_APP_FIREBASE_CONFIG
 ARG REACT_APP_APP_ID
 ARG REACT_APP_INITIAL_AUTH_TOKEN
-ARG REACT_APP_GEMINI_API_KEY
+# Removed ARG REACT_APP_GEMINI_API_KEY as it's not needed for LLM Studio
 
 # Set the working directory in the container
 WORKDIR /app
@@ -19,27 +19,22 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
-# --- DEBUGGING START (keeping some relevant ones) ---
-# Debug 1: Confirm ARG values are received by Dockerfile and show the value (first 5 chars)
-RUN echo "DEBUG (Dockerfile - ARG): REACT_APP_GEMINI_API_KEY ARG value: ${REACT_APP_GEMINI_API_KEY}" && \
-    if [ -z "${REACT_APP_GEMINI_API_KEY}" ]; then echo "  -> ARG is empty!"; fi
+# --- ENVIRONMENT VARIABLE INJECTION ---
+# Create a .env file directly using the ARG values.
+# Only include necessary variables for Firebase.
+RUN echo "REACT_APP_FIREBASE_CONFIG=${REACT_APP_FIREBASE_CONFIG}" > .env && \
+    echo "REACT_APP_APP_ID=${REACT_APP_APP_ID}" >> .env && \
+    echo "REACT_APP_INITIAL_AUTH_TOKEN=${REACT_APP_INITIAL_AUTH_TOKEN}" >> .env
+# Removed REACT_APP_GEMINI_API_KEY from .env creation
 
-# Debug 2: Directly check process.env before npm run build, ensuring it's set in this shell
-RUN echo "DEBUG (Dockerfile - Pre-build env check - direct export):" && \
-    export REACT_APP_GEMINI_API_KEY="${REACT_APP_GEMINI_API_KEY}" && \
-    node -e 'console.log("process.env.REACT_APP_GEMINI_API_KEY (node-e, explicit export):", process.env.REACT_APP_GEMINI_API_KEY ? "SET" : "NOT SET");'
-
+# --- DEBUGGING START (confirming .env content) ---
+RUN echo "DEBUG (Dockerfile - .env content before build):" && \
+    cat .env
 # --- DEBUGGING END ---
 
+
 # Build the React application
-# This is the most direct and often most reliable way to pass env vars to create-react-app.
-# Prefixing the 'npm run build' command with the env vars ensures they are available
-# to the 'react-scripts build' process.
-RUN REACT_APP_FIREBASE_CONFIG=$REACT_APP_FIREBASE_CONFIG \
-    REACT_APP_APP_ID=$REACT_APP_APP_ID \
-    REACT_APP_INITIAL_AUTH_TOKEN=$REACT_APP_INITIAL_AUTH_TOKEN \
-    REACT_APP_GEMINI_API_KEY=$REACT_APP_GEMINI_API_KEY \
-    npm run build
+RUN npm run build
 
 # --- STAGE 2: Serve the Application with Nginx ---
 FROM nginx:stable-alpine AS production-stage

@@ -55,11 +55,14 @@ function App() {
         ? process.env.REACT_APP_INITIAL_AUTH_TOKEN
         : (__initial_auth_token || null); // Now __initial_auth_token is declared as a const
 
-      // --- DEBUGGING: No Gemini API Key needed for LLM Studio, but keep general process.env check ---
-      const debugAppId = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_APP_ID)
-        ? process.env.REACT_APP_APP_ID.substring(0, 5) + "..."
-        : "NOT SET or undefined in process.env";
-      console.log(`DEBUG: REACT_APP_APP_ID seen by app (first 5 chars): ${debugAppId}`);
+      // --- DEBUGGING: Log the value of the API Key seen by the app ---
+      const detectedGeminiApiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
+        ? process.env.REACT_APP_GEMINI_API_KEY
+        : null; // Use null if not set
+
+      console.log(`DEBUG: REACT_APP_GEMINI_API_KEY seen by app (first 5 chars): ${
+        detectedGeminiApiKey ? detectedGeminiApiKey.substring(0, 5) + "..." : "NOT SET or undefined in process.env"
+      }`);
       // --- END DEBUGGING ---
 
 
@@ -203,9 +206,10 @@ const Home = () => {
 // Buyer Dashboard Component
 const BuyerDashboard = () => {
   const { db, userId } = useContext(FirebaseContext);
+  // Get appId from process.env or global __app_id for Firestore paths
   const appId = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_APP_ID)
     ? process.env.REACT_APP_APP_ID
-    : (__app_id || 'default-app-id');
+    : (__app_id || 'default-app-id'); // Use the __app_id const declared at the top
 
   const [preferences, setPreferences] = useState({
     location: '',
@@ -223,6 +227,7 @@ const BuyerDashboard = () => {
   useEffect(() => {
     if (!db || !userId) return;
 
+    // Use the resolved appId for Firestore path
     const docRef = doc(db, `artifacts/${appId}/users/${userId}/buyerPreferences`, 'myPreferences');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -236,8 +241,8 @@ const BuyerDashboard = () => {
       setMessageType('error');
     });
 
-    return () => unsubscribe();
-  }, [db, userId, appId]);
+    return () => unsubscribe(); // Cleanup snapshot listener
+  }, [db, userId, appId]); // Add appId to dependency array
 
   const handlePreferenceChange = (e) => {
     const { name, value } = e.target;
@@ -251,6 +256,7 @@ const BuyerDashboard = () => {
       return;
     }
     try {
+      // Use the resolved appId for Firestore path
       const docRef = doc(db, `artifacts/${appId}/users/${userId}/buyerPreferences`, 'myPreferences');
       await setDoc(docRef, preferences, { merge: true });
       setMessage("Preferences saved successfully!");
@@ -273,19 +279,17 @@ const BuyerDashboard = () => {
     setMessage('');
 
     try {
-      // LLM Studio endpoint - proxied through Nginx
-      const apiUrl = `/llm-api/v1/chat/completions`; // This hits Nginx, which proxies to LLM Studio
+      let chatHistory = [];
+      const userPrompt = `Based on these preferences: Location: ${preferences.location || 'N/A'}, Property Type: ${preferences.propertyType || 'N/A'}, Budget: ${preferences.budget || 'N/A'}, Lifestyle: ${preferences.lifestyle || 'N/A'}. User's specific request: "${aiPrompt}". Suggest suitable suburbs and reasons. Focus on general advice and avoid specific financial recommendations.`;
 
-      // OpenAI-compatible chat completion payload
-      const payload = {
-        model: "default-model", // Use a placeholder model name or a specific one if LLM Studio expects it
-        messages: [
-          { role: "system", content: "You are a helpful real estate assistant. Provide concise and relevant suburb suggestions based on user preferences. Avoid specific financial advice or guaranteeing outcomes." },
-          { role: "user", content: `Based on these preferences: Location: ${preferences.location || 'N/A'}, Property Type: ${preferences.propertyType || 'N/A'}, Budget: ${preferences.budget || 'N/A'}, Lifestyle: ${preferences.lifestyle || 'N/A'}. User's specific request: "${aiPrompt}". Suggest suitable suburbs and reasons.` }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      };
+      chatHistory.push({ role: "user", parts: [{ text: userPrompt }] });
+      const payload = { contents: chatHistory };
+      // Use process.env.REACT_APP_GEMINI_API_KEY for API key
+      const apiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
+        ? process.env.REACT_APP_GEMINI_API_KEY
+        : ""; // Ensure this fallback is handled if key is truly not set
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -294,23 +298,24 @@ const BuyerDashboard = () => {
       });
 
       const result = await response.json();
-
-      // Check for response.ok and then parse the OpenAI-compatible response
-      if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
-        const text = result.choices[0].message.content;
+      if (response.ok && result.candidates && result.candidates.length > 0 &&
+          result.candidates[0].content && result.candidates[0].content.parts &&
+          result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
         setAiResponse(text);
         setMessage("AI recommendation generated!");
         setMessageType('success');
       } else {
-        console.error("LLM Studio response not OK or structure unexpected:", result);
-        setAiResponse("Failed to get AI recommendation from LLM Studio. Please check LLM Studio logs.");
-        setMessage("Failed to get AI recommendation from LLM Studio. Please try again.");
+        // Log the full error response if the request was not OK
+        console.error("AI response not OK or structure unexpected:", result);
+        setAiResponse("Failed to get AI recommendation. Please try again.");
+        setMessage("Failed to get AI recommendation. Please try again.");
         setMessageType('error');
       }
     } catch (error) {
-      console.error("Error calling LLM Studio API via proxy:", error);
-      setAiResponse("An error occurred while fetching AI recommendation. Is LLM Studio running?");
-      setMessage("An error occurred while fetching AI recommendation. Please check your network or LLM Studio.");
+      console.error("Error calling Gemini API:", error);
+      setAiResponse("An error occurred while fetching AI recommendation. Please check your network connection.");
+      setMessage("An error occurred while fetching AI recommendation.");
       setMessageType('error');
     } finally {
       setIsLoadingAI(false);
@@ -445,19 +450,15 @@ const InvestorDashboard = () => {
     setMessage('');
 
     try {
-      // LLM Studio endpoint - proxied through Nginx
-      const apiUrl = `/llm-api/v1/chat/completions`; // This hits Nginx, which proxies to LLM Studio
+      let chatHistory = [];
+      const userPrompt = `I am an investor. My investment goals and considerations are: "${investmentGoal}". Based on this, suggest a suitable real estate investment strategy from the following options: Low Risk + Discounted, High Cashflow Rental, Renovate & Rent/Sell, Buy & Hold (Long-Term Growth), Development. Provide a brief explanation for your suggestion. Avoid specific financial advice.`;
 
-      // OpenAI-compatible chat completion payload
-      const payload = {
-        model: "default-model", // Use a placeholder model name or a specific one if LLM Studio expects it
-        messages: [
-          { role: "system", content: "You are a helpful real estate investment advisor. Provide concise and relevant strategy suggestions based on user goals." },
-          { role: "user", content: `I am an investor. My investment goals and considerations are: "${investmentGoal}". Based on this, suggest a suitable real estate investment strategy from the following options: Low Risk + Discounted, High Cashflow Rental, Renovate & Rent/Sell, Buy & Hold (Long-Term Growth), Development. Provide a brief explanation for your suggestion. Avoid specific financial advice.` }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      };
+      chatHistory.push({ role: "user", parts: [{ text: userPrompt }] });
+      const payload = { contents: chatHistory };
+      const apiKey = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
+        ? process.env.REACT_APP_GEMINI_API_KEY
+        : "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -466,23 +467,24 @@ const InvestorDashboard = () => {
       });
 
       const result = await response.json();
-
-      // Check for response.ok and then parse the OpenAI-compatible response
-      if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
-        const text = result.choices[0].message.content;
+      if (response.ok && result.candidates && result.candidates.length > 0 &&
+          result.candidates[0].content && result.candidates[0].content.parts &&
+          result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
         setStrategySuggestion(text);
         setMessage("Investment strategy suggested!");
         setMessageType('success');
       } else {
-        console.error("LLM Studio response not OK or structure unexpected:", result);
-        setStrategySuggestion("Failed to get strategy suggestion from LLM Studio. Please check LLM Studio logs.");
-        setMessage("Failed to get strategy suggestion from LLM Studio. Please try again.");
+        // Log the full error response if the request was not OK
+        console.error("AI response not OK or structure unexpected:", result);
+        setStrategySuggestion("Failed to get strategy suggestion. Please try again.");
+        setMessage("Failed to get strategy suggestion. Please try again.");
         setMessageType('error');
       }
     } catch (error) {
-      console.error("Error calling LLM Studio API via proxy:", error);
-      setStrategySuggestion("An error occurred while fetching strategy suggestion. Is LLM Studio running?");
-      setMessage("An error occurred while fetching strategy suggestion. Please check your network or LLM Studio.");
+      console.error("Error calling Gemini API for strategy:", error);
+      setStrategySuggestion("An error occurred while fetching strategy suggestion.");
+      setMessage("An error occurred while fetching strategy suggestion.");
       setMessageType('error');
     } finally {
       setIsLoadingStrategy(false);
@@ -600,9 +602,10 @@ const InvestorDashboard = () => {
 // Agent Dashboard Component
 const AgentDashboard = () => {
   const { db, userId } = useContext(FirebaseContext);
+  // Get appId from process.env or global __app_id for Firestore paths
   const appId = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_APP_ID)
     ? process.env.REACT_APP_APP_ID
-    : (__app_id || 'default-app-id');
+    : (__app_id || 'default-app-id'); // Use the __app_id const declared at the top
 
   const [listings, setListings] = useState([]);
   const [newListing, setNewListing] = useState({
@@ -618,6 +621,8 @@ const AgentDashboard = () => {
   useEffect(() => {
     if (!db || !userId) return;
 
+    // Agent-specific listings (private data)
+    // Use the resolved appId for Firestore path
     const listingsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/agentListings`);
     const unsubscribe = onSnapshot(listingsCollectionRef, (snapshot) => {
       const fetchedListings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -628,8 +633,8 @@ const AgentDashboard = () => {
       setMessageType('error');
     });
 
-    return () => unsubscribe();
-  }, [db, userId, appId]);
+    return () => unsubscribe(); // Cleanup snapshot listener
+  }, [db, userId, appId]); // Add appId to dependency array
 
   const handleListingChange = (e) => {
     const { name, value } = e.target;
@@ -648,9 +653,10 @@ const AgentDashboard = () => {
       return;
     }
     try {
+      // Use the resolved appId for Firestore path
       const listingsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/agentListings`);
       await addDoc(listingsCollectionRef, { ...newListing, agentId: userId, createdAt: new Date() });
-      setNewListing({ title: '', description: '', price: '', location: '' });
+      setNewListing({ title: '', description: '', price: '', location: '' }); // Clear form
       setMessage("Listing added successfully!");
       setMessageType('success');
     } catch (error) {
@@ -667,6 +673,7 @@ const AgentDashboard = () => {
       return;
     }
     try {
+      // Use the resolved appId for Firestore path
       const listingDocRef = doc(db, `artifacts/${appId}/users/${userId}/agentListings`, id);
       await deleteDoc(listingDocRef);
       setMessage("Listing deleted successfully!");
@@ -783,7 +790,7 @@ const VendorDashboard = () => {
       {/* Find an Agent */}
       <div className="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-blue-800 mb-4">Find the Right Agent</h3>
-        <p className="text-700 mb-4">
+        <p className="text-gray-700 mb-4">
           Connect with experienced real estate agents who specialize in selling properties in your area.
           Our system helps you find agents based on their track record and client reviews.
         </p>
@@ -821,7 +828,11 @@ const DeveloperDashboard = () => {
   const { userId } = useContext(FirebaseContext);
 
   const requestReport = () => {
+    // In a real application, this would trigger a backend process
+    // to generate and deliver the report.
+    // Replaced alert() with a console.log for compatibility in Canvas
     console.log("Simulated: Your exclusive report request has been submitted!");
+    // You might consider a custom modal or toast notification here instead of alert.
   };
 
   return (

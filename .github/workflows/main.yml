@@ -11,12 +11,12 @@ on:
 env:
   # General variables for your app and image naming
   IMAGE_NAME: real-estate-connect-app
-  # Your Firebase config and Gemini API key for the build environment
+  # Your Firebase config for the build environment
   # IMPORTANT: Store these as GitHub Secrets.
   FIREBASE_CONFIG_VAR: ${{ secrets.FIREBASE_CONFIG }}
-  APP_ID_VAR: ${{ secrets.APP_ID }} # Corrected from FIREBASE_APP_ID as per typical naming convention
-  AUTH_TOKEN_VAR: ${{ secrets.AUTH_TOKEN }} # Corrected from FIREBASE_AUTH_TOKEN
-  GEMINI_API_KEY_VAR: ${{ secrets.GEMINI_API_KEY }}
+  APP_ID_VAR: ${{ secrets.APP_ID }}
+  AUTH_TOKEN_VAR: ${{ secrets.AUTH_TOKEN }}
+  # Removed GEMINI_API_KEY_VAR as it's not needed for LLM Studio
 
 jobs:
   build-and-push-docker:
@@ -66,6 +66,6 @@ jobs:
             REACT_APP_FIREBASE_CONFIG=${{ env.FIREBASE_CONFIG_VAR }}
             REACT_APP_APP_ID=${{ env.APP_ID_VAR }}
             REACT_APP_INITIAL_AUTH_TOKEN=${{ env.AUTH_TOKEN_VAR }}
-            REACT_APP_GEMINI_API_KEY=${{ env.GEMINI_API_KEY_VAR }}
+            # Removed REACT_APP_GEMINI_API_KEY from build-args
           cache-from: type=gha
           cache-to: type=gha,mode=max
