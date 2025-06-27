@@ -246,7 +246,7 @@ const BuyerDashboard = () => {
 
     // --- Start of LLM Studio Fetch Logic ---
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60 seconds
 
     try {
       // LLM Studio endpoint - proxied through Nginx
@@ -440,7 +440,7 @@ const InvestorDashboard = () => {
 
     // --- Start of LLM Studio Fetch Logic ---
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60 seconds
 
     try {
       // LLM Studio endpoint - proxied through Nginx
@@ -843,7 +843,6 @@ const DeveloperDashboard = () => {
           <li>Demographic Insights</li>
         </ul>
         <button
-          onClick={requestReport}
           className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
         >
           Request Latest Report (Simulated)
