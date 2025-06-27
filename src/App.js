@@ -9,7 +9,6 @@ import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnap
 const FirebaseContext = createContext(null);
 
 // Declare Canvas-specific global variables as potentially undefined constants for build-time safety
-// These will be populated by the Canvas environment at runtime if they exist.
 const __app_id = typeof window !== 'undefined' && typeof window.__app_id !== 'undefined' ? window.__app_id : undefined;
 const __firebase_config = typeof window !== 'undefined' && typeof window.__firebase_config !== 'undefined' ? window.__firebase_config : undefined;
 const __initial_auth_token = typeof window !== 'undefined' && typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : undefined;
@@ -17,24 +16,18 @@ const __initial_auth_token = typeof window !== 'undefined' && typeof window.__in
 
 // Main App Component
 function App() {
-  // State to manage the current view (dashboard)
   const [view, setView] = useState('home');
-  // State for Firebase instances
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
-  // State for user ID and authentication readiness
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
-  // Initialize Firebase and set up authentication listener
   useEffect(() => {
     try {
-      // Determine appId: prioritize REACT_APP_APP_ID, then __app_id, then default
       const appId = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_APP_ID)
         ? process.env.REACT_APP_APP_ID
         : (__app_id || 'default-app-id');
 
-      // Determine firebaseConfig: prioritize REACT_APP_FIREBASE_CONFIG (JSON string), then __firebase_config, then empty object
       let firebaseConfig = {};
       if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_FIREBASE_CONFIG) {
         try {
@@ -42,7 +35,7 @@ function App() {
         } catch (e) {
           console.error("Error parsing REACT_APP_FIREBASE_CONFIG from process.env:", e);
         }
-      } else if (__firebase_config) { // Now __firebase_config is declared as a const
+      } else if (__firebase_config) {
         try {
           firebaseConfig = JSON.parse(__firebase_config);
         } catch (e) {
@@ -50,26 +43,21 @@ function App() {
         }
       }
 
-      // Determine initialAuthToken: prioritize REACT_APP_INITIAL_AUTH_TOKEN, then __initial_auth_token, then null
       const initialAuthToken = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_INITIAL_AUTH_TOKEN)
         ? process.env.REACT_APP_INITIAL_AUTH_TOKEN
-        : (__initial_auth_token || null); // Now __initial_auth_token is declared as a const
+        : (__initial_auth_token || null);
 
-      // --- DEBUGGING: No Gemini API Key needed for LLM Studio, but keep general process.env check ---
       const debugAppId = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_APP_ID)
         ? process.env.REACT_APP_APP_ID.substring(0, 5) + "..."
         : "NOT SET or undefined in process.env";
       console.log(`DEBUG: REACT_APP_APP_ID seen by app (first 5 chars): ${debugAppId}`);
-      // --- END DEBUGGING ---
-
 
       if (Object.keys(firebaseConfig).length === 0) {
-        console.error("Firebase config is missing. Please ensure it's defined via environment variables (REACT_APP_FIREBASE_CONFIG) or Canvas globals (__firebase_config).");
-        setIsAuthReady(true); // Mark auth as ready even if config is missing to avoid blocking UI
+        console.error("Firebase config is missing.");
+        setIsAuthReady(true);
         return;
       }
 
-      // Initialize Firebase App
       const app = initializeApp(firebaseConfig);
       const firestoreDb = getFirestore(app);
       const firebaseAuth = getAuth(app);
@@ -77,13 +65,10 @@ function App() {
       setDb(firestoreDb);
       setAuth(firebaseAuth);
 
-      // Listen for authentication state changes
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
         if (user) {
-          // User is signed in
           setUserId(user.uid);
         } else {
-          // User is signed out or not yet authenticated
           console.log("No user signed in. Attempting anonymous or custom token sign-in.");
           try {
             if (initialAuthToken) {
@@ -91,23 +76,20 @@ function App() {
             } else {
               await signInAnonymously(firebaseAuth);
             }
-            // After sign-in, onAuthStateChanged will trigger again with the user object
           } catch (error) {
             console.error("Firebase Authentication failed:", error);
-            // Fallback to a random UUID if anonymous sign-in also fails, for basic functionality
             setUserId(crypto.randomUUID());
           }
         }
-        setIsAuthReady(true); // Authentication state has been checked
+        setIsAuthReady(true);
       });
 
-      // Cleanup subscription on unmount
       return () => unsubscribe();
     } catch (error) {
       console.error("Error initializing Firebase:", error);
-      setIsAuthReady(true); // Mark auth as ready even if initialization failed
+      setIsAuthReady(true);
     }
-  }, []); // Empty dependency array means this effect runs once on mount
+  }, []);
 
   if (!isAuthReady) {
     return (
@@ -121,7 +103,6 @@ function App() {
   }
 
   return (
-    // Provide Firebase instances and user ID through context
     <FirebaseContext.Provider value={{ db, auth, userId }}>
       <div className="min-h-screen bg-gray-50 flex flex-col font-inter">
         {/* Navigation Bar */}
@@ -148,7 +129,6 @@ function App() {
 
         {/* Main Content Area */}
         <main className="container mx-auto p-4 flex-grow">
-          {/* Conditional rendering based on the selected view */}
           {view === 'home' && <Home />}
           {view === 'buyer' && <BuyerDashboard />}
           {view === 'investor' && <InvestorDashboard />}
@@ -168,7 +148,6 @@ function App() {
   );
 }
 
-// Reusable Navigation Button Component
 const NavButton = ({ label, onClick, currentView, targetView }) => {
   const isActive = currentView === targetView;
   return (
@@ -183,15 +162,12 @@ const NavButton = ({ label, onClick, currentView, targetView }) => {
   );
 };
 
-// Home Component
 const Home = () => {
   return (
     <div className="p-8 bg-white rounded-lg shadow-xl text-center max-w-3xl mx-auto my-8">
       <h2 className="text-4xl font-extrabold text-blue-800 mb-6">Welcome to RealEstateConnect!</h2>
       <p className="text-lg text-gray-700 leading-relaxed mb-4">
-        Your ultimate platform for all real estate needs. Whether you're buying your first home,
-        investing in properties, an agent connecting with clients, a vendor selling, or a developer
-        seeking insights, we've got you covered.
+        Your ultimate platform for all real estate needs.
       </p>
       <p className="text-md text-gray-600">
         Navigate through the options above to explore tailored features for your role.
@@ -200,7 +176,6 @@ const Home = () => {
   );
 };
 
-// Buyer Dashboard Component
 const BuyerDashboard = () => {
   const { db, userId } = useContext(FirebaseContext);
   const appId = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_APP_ID)
@@ -219,10 +194,8 @@ const BuyerDashboard = () => {
   const [messageType, setMessageType] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
 
-  // Load preferences from Firestore on component mount
   useEffect(() => {
     if (!db || !userId) return;
-
     const docRef = doc(db, `artifacts/${appId}/users/${userId}/buyerPreferences`, 'myPreferences');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -235,7 +208,6 @@ const BuyerDashboard = () => {
       setMessage("Error loading preferences.");
       setMessageType('error');
     });
-
     return () => unsubscribe();
   }, [db, userId, appId]);
 
@@ -276,9 +248,8 @@ const BuyerDashboard = () => {
       // LLM Studio endpoint - proxied through Nginx
       const apiUrl = `/llm-api/v1/chat/completions`; // This hits Nginx, which proxies to LLM Studio
 
-      // OpenAI-compatible chat completion payload
       const payload = {
-        model: "default-model", // Use a placeholder model name or a specific one if LLM Studio expects it
+        model: "default-model",
         messages: [
           { role: "system", content: "You are a helpful real estate assistant. Provide concise and relevant suburb suggestions based on user preferences. Avoid specific financial advice or guaranteeing outcomes." },
           { role: "user", content: `Based on these preferences: Location: ${preferences.location || 'N/A'}, Property Type: ${preferences.propertyType || 'N/A'}, Budget: ${preferences.budget || 'N/A'}, Lifestyle: ${preferences.lifestyle || 'N/A'}. User's specific request: "${aiPrompt}". Suggest suitable suburbs and reasons.` }
@@ -295,7 +266,6 @@ const BuyerDashboard = () => {
 
       const result = await response.json();
 
-      // Check for response.ok and then parse the OpenAI-compatible response
       if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
         const text = result.choices[0].message.content;
         setAiResponse(text);
@@ -303,13 +273,17 @@ const BuyerDashboard = () => {
         setMessageType('success');
       } else {
         console.error("LLM Studio response not OK or structure unexpected:", result);
-        setAiResponse("Failed to get AI recommendation from LLM Studio. Please check LLM Studio logs.");
-        setMessage("Failed to get AI recommendation from LLM Studio. Please try again.");
+        if (!response.ok) {
+          setMessage(`LLM Studio API error: ${response.status} - ${result.error?.message || 'Unknown error'}`);
+        } else {
+          setAiResponse("Failed to get AI recommendation from LLM Studio. Unexpected response structure.");
+          setMessage("Failed to get AI recommendation from LLM Studio. Please check LLM Studio logs.");
+        }
         setMessageType('error');
       }
     } catch (error) {
       console.error("Error calling LLM Studio API via proxy:", error);
-      setAiResponse("An error occurred while fetching AI recommendation. Is LLM Studio running?");
+      setAiResponse("An error occurred while fetching AI recommendation. Is LLM Studio running and reachable by Docker?");
       setMessage("An error occurred while fetching AI recommendation. Please check your network or LLM Studio.");
       setMessageType('error');
     } finally {
@@ -327,7 +301,6 @@ const BuyerDashboard = () => {
         </div>
       )}
 
-      {/* Preference Input */}
       <div className="mb-8">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Your Preferences</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -344,7 +317,6 @@ const BuyerDashboard = () => {
         </button>
       </div>
 
-      {/* AI-Powered Recommendations */}
       <div className="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-blue-800 mb-4">AI-Powered Suburb Suggestions ✨</h3>
         <p className="text-gray-700 mb-4">
@@ -381,26 +353,22 @@ const BuyerDashboard = () => {
         )}
       </div>
 
-      {/* Suburb Heatmaps (Placeholder) */}
       <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Suburb Heatmaps</h3>
         <p className="text-gray-700">
-          This section would display interactive heatmaps showing preferences, amenities, and growth potential
-          for different suburbs based on your criteria.
+          This section would display interactive heatmaps.
         </p>
         <div className="mt-4 h-64 bg-gray-200 rounded-md flex items-center justify-center text-gray-500 text-lg border border-dashed border-gray-400">
           [Interactive Map with Heatmap Overlay Placeholder]
         </div>
       </div>
 
-      {/* Property Listings (Placeholder) */}
       <div className="p-6 bg-white rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Available Properties</h3>
         <p className="text-gray-700 mb-4">
           Here you would see property listings filtered by your preferences and AI recommendations.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Example Property Cards */}
           <PropertyCard title="Spacious Family Home" location="Maplewood" price="$650,000" />
           <PropertyCard title="Modern City Apartment" location="Downtown" price="$480,000" />
           <PropertyCard title="Cozy Townhouse" location="Greenview" price="$550,000" />
@@ -410,12 +378,11 @@ const BuyerDashboard = () => {
   );
 };
 
-// Investor Dashboard Component
 const InvestorDashboard = () => {
   const [selectedStrategy, setSelectedStrategy] = useState('');
-  const [investmentGoal, setInvestmentGoal] = useState(''); // New state for investment goal
-  const [strategySuggestion, setStrategySuggestion] = useState(''); // New state for LLM strategy
-  const [isLoadingStrategy, setIsLoadingStrategy] = useState(false); // New loading state for strategy LLM
+  const [investmentGoal, setInvestmentGoal] = useState('');
+  const [strategySuggestion, setStrategySuggestion] = useState('');
+  const [isLoadingStrategy, setIsLoadingStrategy] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
 
@@ -448,9 +415,8 @@ const InvestorDashboard = () => {
       // LLM Studio endpoint - proxied through Nginx
       const apiUrl = `/llm-api/v1/chat/completions`; // This hits Nginx, which proxies to LLM Studio
 
-      // OpenAI-compatible chat completion payload
       const payload = {
-        model: "default-model", // Use a placeholder model name or a specific one if LLM Studio expects it
+        model: "default-model",
         messages: [
           { role: "system", content: "You are a helpful real estate investment advisor. Provide concise and relevant strategy suggestions based on user goals." },
           { role: "user", content: `I am an investor. My investment goals and considerations are: "${investmentGoal}". Based on this, suggest a suitable real estate investment strategy from the following options: Low Risk + Discounted, High Cashflow Rental, Renovate & Rent/Sell, Buy & Hold (Long-Term Growth), Development. Provide a brief explanation for your suggestion. Avoid specific financial advice.` }
@@ -467,7 +433,6 @@ const InvestorDashboard = () => {
 
       const result = await response.json();
 
-      // Check for response.ok and then parse the OpenAI-compatible response
       if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
         const text = result.choices[0].message.content;
         setStrategySuggestion(text);
@@ -475,13 +440,17 @@ const InvestorDashboard = () => {
         setMessageType('success');
       } else {
         console.error("LLM Studio response not OK or structure unexpected:", result);
-        setStrategySuggestion("Failed to get strategy suggestion from LLM Studio. Please check LLM Studio logs.");
-        setMessage("Failed to get strategy suggestion from LLM Studio. Please try again.");
+        if (!response.ok) {
+          setMessage(`LLM Studio API error: ${response.status} - ${result.error?.message || 'Unknown error'}`);
+        } else {
+          setStrategySuggestion("Failed to get strategy suggestion from LLM Studio. Unexpected response structure.");
+          setMessage("Failed to get strategy suggestion from LLM Studio. Please check LLM Studio logs.");
+        }
         setMessageType('error');
       }
     } catch (error) {
       console.error("Error calling LLM Studio API via proxy:", error);
-      setStrategySuggestion("An error occurred while fetching strategy suggestion. Is LLM Studio running?");
+      setStrategySuggestion("An error occurred while fetching strategy suggestion. Is LLM Studio running and reachable by Docker?");
       setMessage("An error occurred while fetching strategy suggestion. Please check your network or LLM Studio.");
       setMessageType('error');
     } finally {
@@ -499,7 +468,6 @@ const InvestorDashboard = () => {
         </div>
       )}
 
-      {/* Investment Strategy Selection */}
       <div className="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-blue-800 mb-4">Choose Your Investment Strategy</h3>
         <p className="text-gray-700 mb-4">
@@ -529,7 +497,6 @@ const InvestorDashboard = () => {
         )}
       </div>
 
-      {/* AI-Powered Strategy Suggestion */}
       <div className="mb-8 p-6 bg-indigo-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-indigo-800 mb-4">AI-Powered Strategy Suggestion ✨</h3>
         <p className="text-gray-700 mb-4">
@@ -566,11 +533,10 @@ const InvestorDashboard = () => {
         )}
       </div>
 
-      {/* Forecasting Tools & Metrics (Placeholder) */}
       <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Forecasting Tools & Metrics</h3>
         <p className="text-gray-700">
-          Access simulated forecasts for capital growth, rental income, mortgage costs, and key metrics like CAGR.
+          Access simulated forecasts for capital growth, rental income.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <MetricCard title="Projected Capital Growth" value="8.5% p.a." description="Simulated annual growth" />
@@ -580,11 +546,10 @@ const InvestorDashboard = () => {
         </div>
       </div>
 
-      {/* Educational Resources (Placeholder) */}
       <div className="p-6 bg-white rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Educational Resources</h3>
         <p className="text-gray-700">
-          Explore articles and guides on various investment categories (e.g., Conventional Rental, Airbnb, Co-living, NDIS, Commercial).
+          Explore articles and guides on various investment categories.
         </p>
         <ul className="list-disc list-inside mt-4 text-gray-700">
           <li className="mb-1">Understanding Conventional Rental Properties</li>
@@ -597,7 +562,6 @@ const InvestorDashboard = () => {
   );
 };
 
-// Agent Dashboard Component
 const AgentDashboard = () => {
   const { db, userId } = useContext(FirebaseContext);
   const appId = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_APP_ID)
@@ -614,10 +578,8 @@ const AgentDashboard = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
 
-  // Fetch listings for the agent
   useEffect(() => {
     if (!db || !userId) return;
-
     const listingsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/agentListings`);
     const unsubscribe = onSnapshot(listingsCollectionRef, (snapshot) => {
       const fetchedListings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -627,7 +589,6 @@ const AgentDashboard = () => {
       setMessage("Error loading your listings.");
       setMessageType('error');
     });
-
     return () => unsubscribe();
   }, [db, userId, appId]);
 
@@ -689,7 +650,6 @@ const AgentDashboard = () => {
         </div>
       )}
 
-      {/* Add New Listing */}
       <div className="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-blue-800 mb-4">Add New Property Listing</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -717,7 +677,6 @@ const AgentDashboard = () => {
         </button>
       </div>
 
-      {/* Your Listings */}
       <div className="mb-8 p-6 bg-white rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Your Active Listings</h3>
         {listings.length === 0 ? (
@@ -743,12 +702,10 @@ const AgentDashboard = () => {
         )}
       </div>
 
-      {/* Buyer Intent System (Placeholder) */}
       <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Buyer Intent System</h3>
         <p className="text-gray-700">
-          This section would show insights into serious buyer intent for your listings,
-          identifying potential leads based on their platform activity and preferences.
+          This section would show insights into serious buyer intent for your listings.
         </p>
         <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md shadow-sm">
           <h4 className="font-semibold text-gray-700">Top Inquiries for Your Listings:</h4>
@@ -760,11 +717,10 @@ const AgentDashboard = () => {
         </div>
       </div>
 
-      {/* Agent Heatmaps (Placeholder) */}
       <div className="p-6 bg-white rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Agent Heatmaps & Insights</h3>
         <p className="text-gray-700">
-          Visualize demand hot-spots, popular property types, and optimal pricing strategies based on aggregated data.
+          Visualize demand hot-spots, popular property types.
         </p>
         <div className="mt-4 h-64 bg-gray-200 rounded-md flex items-center justify-center text-gray-500 text-lg border border-dashed border-gray-400">
           [Market Demand Heatmap Placeholder for Agents]
@@ -774,18 +730,15 @@ const AgentDashboard = () => {
   );
 };
 
-// Vendor Dashboard Component
 const VendorDashboard = () => {
   return (
     <div className="p-6 bg-white rounded-lg shadow-xl my-8">
       <h2 className="text-3xl font-bold text-blue-700 mb-6 border-b pb-3">Vendor Dashboard</h2>
 
-      {/* Find an Agent */}
       <div className="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-blue-800 mb-4">Find the Right Agent</h3>
-        <p className="text-700 mb-4">
-          Connect with experienced real estate agents who specialize in selling properties in your area.
-          Our system helps you find agents based on their track record and client reviews.
+        <p className="text-gray-700 mb-4">
+          Connect with experienced real estate agents.
         </p>
         <button
           className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
@@ -794,11 +747,10 @@ const VendorDashboard = () => {
         </button>
       </div>
 
-      {/* Get Reviews */}
       <div className="p-6 bg-gray-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Manage Reviews</h3>
         <p className="text-gray-700 mb-4">
-          After a successful sale, you can leave reviews for the agents you worked with, helping other vendors.
+          After a successful sale, you can leave reviews.
         </p>
         <button
           className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-md shadow-md hover:bg-indigo-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
@@ -808,7 +760,7 @@ const VendorDashboard = () => {
         <div className="mt-4 p-4 bg-white border border-gray-200 rounded-md shadow-sm">
           <h4 className="font-semibold text-gray-700">Your Past Sales & Reviews:</h4>
           <p className="text-gray-600 text-sm mt-2">
-            No sales recorded yet. Once your property is sold, you can leave a review.
+            No sales recorded yet.
           </p>
         </div>
       </div>
@@ -816,7 +768,6 @@ const VendorDashboard = () => {
   );
 };
 
-// Developer Dashboard Component
 const DeveloperDashboard = () => {
   const { userId } = useContext(FirebaseContext);
 
@@ -828,18 +779,14 @@ const DeveloperDashboard = () => {
     <div className="p-6 bg-white rounded-lg shadow-xl my-8">
       <h2 className="text-3xl font-bold text-blue-700 mb-6 border-b pb-3">Developer Dashboard</h2>
 
-      {/* Access Exclusive Reports */}
       <div className="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-blue-800 mb-4">Access Exclusive Reports</h3>
         <p className="text-gray-700 mb-4">
-          Receive tailored reports based on machine learning analysis of user search data and SA2/SA3 region data.
-          These reports provide deep insights into market demand, growth opportunities, and consumer preferences.
+          Receive tailored reports based on machine learning analysis.
         </p>
         <ul className="list-disc list-inside text-gray-700 mb-4">
-          <li>Market Demand Heatmaps (by suburb, property type)</li>
-          <li>Demographic Insights for specific regions</li>
-          <li>Historical Search Trends & Forecasts</li>
-          <li>Competitor Analysis (simulated)</li>
+          <li>Market Demand Heatmaps</li>
+          <li>Demographic Insights</li>
         </ul>
         <button
           onClick={requestReport}
@@ -849,12 +796,10 @@ const DeveloperDashboard = () => {
         </button>
       </div>
 
-      {/* Connect Website URL */}
       <div className="p-6 bg-gray-50 rounded-lg shadow-inner">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4">Connect Your Website</h3>
         <p className="text-gray-700 mb-4">
-          Integrate your existing development website to seamlessly feed data into our analytics engine
-          and receive even more refined insights.
+          Integrate your existing development website.
         </p>
         <InputGroup label="Your Website URL" name="developerUrl" value="https://your-dev-site.com" onChange={() => {}} readOnly={true} />
         <button
@@ -870,7 +815,6 @@ const DeveloperDashboard = () => {
   );
 };
 
-// Reusable Input Group Component
 const InputGroup = ({ label, name, value, onChange, type = 'text', readOnly = false }) => (
   <div>
     <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
@@ -889,7 +833,6 @@ const InputGroup = ({ label, name, value, onChange, type = 'text', readOnly = fa
   </div>
 );
 
-// Reusable Property Card Component
 const PropertyCard = ({ title, location, price }) => (
   <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
     <img
@@ -909,7 +852,6 @@ const PropertyCard = ({ title, location, price }) => (
   </div>
 );
 
-// Reusable Metric Card Component for Investor Dashboard
 const MetricCard = ({ title, value, description }) => (
   <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
     <h4 className="font-semibold text-lg text-gray-800">{title}</h4>
@@ -918,5 +860,4 @@ const MetricCard = ({ title, value, description }) => (
   </div>
 );
 
-// Ensure the App component is the default export for React rendering
 export default App;
