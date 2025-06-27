@@ -244,6 +244,10 @@ const BuyerDashboard = () => {
     setAiResponse('');
     setMessage('');
 
+    // --- Start of LLM Studio Fetch Logic ---
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
+
     try {
       // LLM Studio endpoint - proxied through Nginx
       const apiUrl = `/llm-api/v1/chat/completions`; // This hits Nginx, which proxies to LLM Studio
@@ -261,34 +265,57 @@ const BuyerDashboard = () => {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal // Apply the timeout signal
       });
+
+      clearTimeout(timeoutId); // Clear timeout if fetch completes
+
+      if (!response.ok) {
+        let errorData = await response.text(); // Get raw text first to avoid JSON parsing errors
+        try {
+          errorData = JSON.parse(errorData); // Try parsing as JSON
+        } catch (e) {
+          // If not JSON, use raw text
+        }
+        console.error(`LLM Studio API (HTTP Error ${response.status} ${response.statusText}):`, errorData);
+        setMessage(`LLM Studio API Error: ${response.status} ${response.statusText}. Details: ${typeof errorData === 'object' ? (errorData.error?.message || JSON.stringify(errorData)) : errorData}`);
+        setMessageType('error');
+        setAiResponse("Failed to get AI recommendation. Please check console for details.");
+        return; // Exit early on non-OK HTTP status
+      }
 
       const result = await response.json();
 
-      if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
+      if (result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
         const text = result.choices[0].message.content;
         setAiResponse(text);
         setMessage("AI recommendation generated!");
         setMessageType('success');
       } else {
-        console.error("LLM Studio response not OK or structure unexpected:", result);
-        if (!response.ok) {
-          setMessage(`LLM Studio API error: ${response.status} - ${result.error?.message || 'Unknown error'}`);
-        } else {
-          setAiResponse("Failed to get AI recommendation from LLM Studio. Unexpected response structure.");
-          setMessage("Failed to get AI recommendation from LLM Studio. Please check LLM Studio logs.");
-        }
+        console.error("LLM Studio response structure unexpected:", result);
+        setAiResponse("Failed to get AI recommendation from LLM Studio. Unexpected response structure.");
+        setMessage("Failed to get AI recommendation from LLM Studio. Please check LLM Studio logs and console.");
         setMessageType('error');
       }
     } catch (error) {
+      clearTimeout(timeoutId); // Ensure timeout is cleared even on network errors
       console.error("Error calling LLM Studio API via proxy:", error);
-      setAiResponse("An error occurred while fetching AI recommendation. Is LLM Studio running and reachable by Docker?");
-      setMessage("An error occurred while fetching AI recommendation. Please check your network or LLM Studio.");
+      if (error.name === 'AbortError') {
+        setMessage("AI recommendation request timed out. LLM Studio might be slow or unreachable.");
+        setAiResponse("Request timed out. Please try again or check LLM Studio's performance.");
+      } else if (error instanceof TypeError) { // Network errors (e.g., DNS issues, connection refused)
+        setMessage("Network error: Could not connect to LLM Studio proxy. Is Docker running and Nginx configured correctly?");
+        setAiResponse("Network error. Please check Docker and LLM Studio's availability.");
+      } else {
+        setMessage("An unexpected error occurred while fetching AI recommendation.");
+        setAiResponse("An unexpected error occurred. Please check console for details.");
+      }
       setMessageType('error');
     } finally {
       setIsLoadingAI(false);
     }
+    // --- End of LLM Studio Fetch Logic ---
   };
 
   return (
@@ -411,6 +438,10 @@ const InvestorDashboard = () => {
     setStrategySuggestion('');
     setMessage('');
 
+    // --- Start of LLM Studio Fetch Logic ---
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
+
     try {
       // LLM Studio endpoint - proxied through Nginx
       const apiUrl = `/llm-api/v1/chat/completions`; // This hits Nginx, which proxies to LLM Studio
@@ -428,34 +459,57 @@ const InvestorDashboard = () => {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal // Apply the timeout signal
       });
+
+      clearTimeout(timeoutId); // Clear timeout if fetch completes
+
+      if (!response.ok) {
+        let errorData = await response.text(); // Get raw text first to avoid JSON parsing errors
+        try {
+          errorData = JSON.parse(errorData); // Try parsing as JSON
+        } catch (e) {
+          // If not JSON, use raw text
+        }
+        console.error(`LLM Studio API (HTTP Error ${response.status} ${response.statusText}):`, errorData);
+        setMessage(`LLM Studio API Error: ${response.status} ${response.statusText}. Details: ${typeof errorData === 'object' ? (errorData.error?.message || JSON.stringify(errorData)) : errorData}`);
+        setMessageType('error');
+        setStrategySuggestion("Failed to get strategy suggestion. Please check console for details.");
+        return; // Exit early on non-OK HTTP status
+      }
 
       const result = await response.json();
 
-      if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
+      if (result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
         const text = result.choices[0].message.content;
         setStrategySuggestion(text);
         setMessage("Investment strategy suggested!");
         setMessageType('success');
       } else {
-        console.error("LLM Studio response not OK or structure unexpected:", result);
-        if (!response.ok) {
-          setMessage(`LLM Studio API error: ${response.status} - ${result.error?.message || 'Unknown error'}`);
-        } else {
-          setStrategySuggestion("Failed to get strategy suggestion from LLM Studio. Unexpected response structure.");
-          setMessage("Failed to get strategy suggestion from LLM Studio. Please check LLM Studio logs.");
-        }
+        console.error("LLM Studio response structure unexpected:", result);
+        setStrategySuggestion("Failed to get strategy suggestion from LLM Studio. Unexpected response structure.");
+        setMessage("Failed to get strategy suggestion from LLM Studio. Please check LLM Studio logs and console.");
         setMessageType('error');
       }
     } catch (error) {
+      clearTimeout(timeoutId); // Ensure timeout is cleared even on network errors
       console.error("Error calling LLM Studio API via proxy:", error);
-      setStrategySuggestion("An error occurred while fetching strategy suggestion. Is LLM Studio running and reachable by Docker?");
-      setMessage("An error occurred while fetching strategy suggestion. Please check your network or LLM Studio.");
+      if (error.name === 'AbortError') {
+        setMessage("AI strategy request timed out. LLM Studio might be slow or unreachable.");
+        setStrategySuggestion("Request timed out. Please try again or check LLM Studio's performance.");
+      } else if (error instanceof TypeError) { // Network errors (e.g., DNS issues, connection refused)
+        setMessage("Network error: Could not connect to LLM Studio proxy. Is Docker running and Nginx configured correctly?");
+        setStrategySuggestion("Network error. Please check Docker and LLM Studio's availability.");
+      } else {
+        setMessage("An unexpected error occurred while fetching AI strategy.");
+        setStrategySuggestion("An unexpected error occurred. Please check console for details.");
+      }
       setMessageType('error');
     } finally {
       setIsLoadingStrategy(false);
     }
+    // --- End of LLM Studio Fetch Logic ---
   };
 
   return (
