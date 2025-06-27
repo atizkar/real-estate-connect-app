@@ -246,7 +246,7 @@ const BuyerDashboard = () => {
 
     // --- Start of LLM Studio Fetch Logic ---
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // Increased timeout to 180 seconds
 
     try {
       // LLM Studio endpoint - proxied through Nginx
@@ -440,7 +440,7 @@ const InvestorDashboard = () => {
 
     // --- Start of LLM Studio Fetch Logic ---
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // Increased timeout to 180 seconds
 
     try {
       // LLM Studio endpoint - proxied through Nginx
