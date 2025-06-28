@@ -48,7 +48,7 @@ jobs:
             LARAVEL_TAG="latest"
           else
             LARAVEL_TAG="$BRANCH_NAME"
-          fi
+           fi
 
           # Output the tags for use in subsequent steps
           echo "WEB_IMAGE_TAG=$WEB_TAG" >> $GITHUB_OUTPUT
@@ -63,7 +63,6 @@ jobs:
           WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
         run: |
           echo "Building ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG"
-          # Corrected: Context path '.' moved to the beginning
           docker build . \
             -t ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG \
             -f Dockerfile
@@ -80,7 +79,6 @@ jobs:
           LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
         run: |
           echo "Building ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
-          # Corrected: Context path './laravel_backend' moved to the beginning
           docker build ./laravel_backend \
             -t ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG \
             -f laravel_backend/Dockerfile
@@ -98,3 +96,59 @@ jobs:
           docker pull ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
           docker pull ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
           echo "Images pulled successfully for verification."
+
+      # --- Docker Compose Deployment/Testing Steps ---
+      - name: Set up Environment Variables for Docker Compose
+        env:
+          WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
+          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+          # IMPORTANT: Use your actual database credentials from GitHub Secrets or hardcode for CI
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+        run: |
+          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
+          echo "WEB_IMAGE_TAG=${{ env.WEB_IMAGE_TAG }}" >> $GITHUB_ENV
+          echo "LARAVEL_IMAGE_TAG=${{ env.LARAVEL_IMAGE_TAG }}" >> $GITHUB_ENV
+          echo "MYSQL_DATABASE=${{ env.MYSQL_DATABASE }}" >> $GITHUB_ENV
+          echo "MYSQL_USER=${{ env.MYSQL_USER }}" >> $GITHUB_ENV
+          echo "MYSQL_PASSWORD=${{ env.MYSQL_PASSWORD }}" >> $GITHUB_ENV
+          echo "MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Pull and Start Docker Compose Services
+        run: |
+          echo "Pulling latest images with Docker Compose..."
+          docker compose pull
+          echo "Starting services with Docker Compose..."
+          docker compose up -d
+          echo "Docker Compose services started."
+          docker compose ps # Show running services
+
+      - name: Run Laravel Migrations
+        run: |
+          echo "Running Laravel migrations..."
+          # The healthcheck in docker-compose.yml helps ensure DB is ready,
+          # but a short sleep can sometimes help for initial setup.
+          sleep 5
+          docker compose exec -T laravel_app php artisan migrate --force
+          echo "Laravel migrations completed."
+
+      - name: Perform Basic Application Test (Optional)
+        run: |
+          echo "Waiting for web app to be accessible..."
+          sleep 20 # Give Nginx/React app time to fully start and serve
+          curl_status=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:3002)
+          if [ "$curl_status" == "200" ]; then
+            echo "Web app is accessible (HTTP 200 OK)."
+          else
+            echo "Web app is NOT accessible. HTTP Status: $curl_status"
+            exit 1 # Fail the job if app is not accessible
+          fi
+
+      - name: Stop and Clean up Docker Compose Services
+        if: always() # This ensures cleanup runs even if previous steps fail
+        run: |
+          echo "Stopping Docker Compose services..."
+          docker compose down
+          echo "Docker Compose services stopped and cleaned up."
