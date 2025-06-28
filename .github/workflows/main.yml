@@ -56,16 +56,16 @@ jobs:
           echo "LARAVEL_IMAGE_TAG=$LARAVEL_TAG" >> $GITHUB_OUTPUT
 
           echo "Preparing to build and push images:"
-          echo "  Frontend (React/Nginx): ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_TAG"
-          echo "  Backend (Laravel): ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_TAG"
+          echo "  Frontend (React/Nginx): real-estate-connect-app:$WEB_TAG"
+          echo "  Backend (Laravel): real-estate-connect-laravel:$LARAVEL_TAG"
 
       - name: Build React/Nginx Image
         env:
           WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
         run: |
-          echo "Building ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG"
+          echo "Building real-estate-connect-app:$WEB_IMAGE_TAG"
           docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG \
+            -t real-estate-connect-app:$WEB_IMAGE_TAG \
             -f Dockerfile \
             .
 
@@ -73,16 +73,16 @@ jobs:
         env:
           WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
         run: |
-          echo "Pushing ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG"
-          docker push ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG
+          echo "Pushing real-estate-connect-app:$WEB_IMAGE_TAG"
+          docker push real-estate-connect-app:$WEB_IMAGE_TAG
 
       - name: Build Laravel Image
         env:
           LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
         run: |
-          echo "Building ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
+          echo "Building real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
           docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_TAG \
+            -t real-estate-connect-laravel:$LARAVEL_TAG \
             -f laravel_backend/Dockerfile \
             ./laravel_backend
 
@@ -90,12 +90,12 @@ jobs:
         env:
           LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
         run: |
-          echo "Pushing ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
-          docker push ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG
+          echo "Pushing real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
+          docker push real-estate-connect-laravel:$LARAVEL_IMAGE_TAG
 
       - name: Verify pushed images (Optional)
         run: |
           echo "Verifying images on Docker Hub by pulling them back..."
-          docker pull ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
-          docker pull ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+          docker pull real-estate-connect-app:${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
+          docker pull real-estate-connect-laravel:${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
           echo "Images pulled successfully for verification."
