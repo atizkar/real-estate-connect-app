@@ -40,8 +40,9 @@ jobs:
             WEB_TAG="latest"
             LARAVEL_TAG="latest"
           fi
-          echo "WEB_IMAGE_TAG=$WEB_OUTPUT" >> $GITHUB_OUTPUT
-          echo "LARAVEL_IMAGE_TAG=$LARAVEL_OUTPUT" >> $GITHUB_OUTPUT
+          # CORRECTED: Use $WEB_TAG and $LARAVEL_TAG for outputs
+          echo "WEB_IMAGE_TAG=$WEB_TAG" >> $GITHUB_OUTPUT
+          echo "LARAVEL_IMAGE_TAG=$LARAVEL_TAG" >> $GITHUB_OUTPUT
           echo "Preparing to build and push images:"
           echo "  Frontend (React/Nginx): ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_TAG"
           echo "  Backend (Laravel): ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_TAG"
