@@ -48,7 +48,7 @@ jobs:
             LARAVEL_TAG="latest"
           else
             LARAVEL_TAG="$BRANCH_NAME"
-           fi
+          fi
 
           # Output the tags for use in subsequent steps
           echo "WEB_IMAGE_TAG=$WEB_TAG" >> $GITHUB_OUTPUT
@@ -102,7 +102,6 @@ jobs:
         env:
           WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
           LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
-          # IMPORTANT: Use your actual database credentials from GitHub Secrets or hardcode for CI
           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
@@ -128,16 +127,19 @@ jobs:
       - name: Run Laravel Migrations
         run: |
           echo "Running Laravel migrations..."
-          # The healthcheck in docker-compose.yml helps ensure DB is ready,
-          # but a short sleep can sometimes help for initial setup.
-          sleep 5
+          sleep 5 # Give DB a moment after starting (healthcheck in compose should mostly handle this)
           docker compose exec -T laravel_app php artisan migrate --force
           echo "Laravel migrations completed."
 
-      - name: Perform Basic Application Test (Optional)
+      - name: Perform Basic Application Test
         run: |
           echo "Waiting for web app to be accessible..."
-          sleep 20 # Give Nginx/React app time to fully start and serve
+          # --- Increased sleep time and added Nginx logs for debugging ---
+          sleep 45 # Increased sleep to allow more time for all services to stabilize
+          echo "Nginx container logs:"
+          docker compose logs nginx_web # Output Nginx logs for debugging
+          echo "Attempting curl check..."
+          # --- End changes ---
           curl_status=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:3002)
           if [ "$curl_status" == "200" ]; then
             echo "Web app is accessible (HTTP 200 OK)."
