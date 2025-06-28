@@ -1,71 +1,86 @@
-name: Build and Push Docker Image to Docker Hub
+# .github/workflows/ci-cd.yml
+name: CI/CD Pipeline - Multi-Service Docker Build
 
 on:
   push:
     branches:
-      - dev # Trigger this workflow when code is pushed to the 'dev' branch
+      - dev
+      - feature/laravel-backend # Trigger on pushes to your new feature branch
   pull_request:
     branches:
-      - dev # Also run on pull requests targeting 'dev'
-
-env:
-  # General variables for your app and image naming
-  IMAGE_NAME: real-estate-connect-app
-  # Your Firebase config for the build environment
-  # IMPORTANT: Store these as GitHub Secrets.
-  FIREBASE_CONFIG_VAR: ${{ secrets.FIREBASE_CONFIG }}
-  APP_ID_VAR: ${{ secrets.APP_ID }}
-  AUTH_TOKEN_VAR: ${{ secrets.AUTH_TOKEN }}
-  # Removed GEMINI_API_KEY_VAR as it's not needed for LLM Studio
+      - dev
+      - feature/laravel-backend # Also run on pull requests to these branches
 
 jobs:
-  build-and-push-docker:
-    runs-on: ubuntu-latest # Use the latest Ubuntu runner
-
-    permissions:
-      contents: read
-      # No 'packages: write' needed as we are pushing to Docker Hub, not GHCR
+  build_and_push:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20' # Match your Node.js version used in Dockerfile
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3 # Required for building multi-architecture images
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3 # Better builder for Docker
+        uses: docker/setup-buildx-action@v2
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
         with:
-          registry: docker.io # Specify Docker Hub registry
-          username: ${{ secrets.DOCKER_USERNAME }} # Use your Docker Hub username secret
-          password: ${{ secrets.DOCKER_PASSWORD }} # Use your Docker Hub password/PAT secret
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Get current date for image tag
-        id: date
-        run: echo "::set-output name=date::$(date +'%Y%m%d%H%M%S')"
+      - name: Set Image Tags
+        id: set_tags
+        run: |
+          # Get the branch name and sanitize it for use as a Docker tag
+          # Replaces slashes and other non-alphanumeric chars with hyphens, converts to lowercase
+          BRANCH_NAME=$(echo "${{ github.ref }}" | sed -e "s/refs\/heads\///g" | sed -e "s/[^a-zA-Z0-9-]/-/g" | tr '[:upper:]' '[:lower:]')
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          # Tags to push to Docker Hub (your-dockerhub-username/your-image-name)
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.date.outputs.date }}
-          # Pass environment variables to the Docker build process
-          build-args: |
-            REACT_APP_FIREBASE_CONFIG=${{ env.FIREBASE_CONFIG_VAR }}
-            REACT_APP_APP_ID=${{ env.APP_ID_VAR }}
-            REACT_APP_INITIAL_AUTH_TOKEN=${{ env.AUTH_TOKEN_VAR }}
-            # Removed REACT_APP_GEMINI_API_KEY from build-args
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Determine the tag for the web (React/Nginx) image
+          if [ "$BRANCH_NAME" == "dev" ]; then
+            WEB_TAG="latest"
+          else
+            WEB_TAG="$BRANCH_NAME"
+          fi
+
+          # Determine the tag for the Laravel (backend) image
+          if [ "$BRANCH_NAME" == "dev" ]; then
+            LARAVEL_TAG="latest"
+          else
+            LARAVEL_TAG="$BRANCH_NAME"
+          fi
+
+          # Output the tags for use in subsequent steps
+          echo "WEB_IMAGE_TAG=$WEB_TAG" >> $GITHUB_OUTPUT
+          echo "LARAVEL_IMAGE_TAG=$LARAVEL_TAG" >> $GITHUB_OUTPUT
+
+          echo "Preparing to build and push images:"
+          echo "  Frontend (React/Nginx): knowledgepot/real-estate-connect-app:$WEB_TAG"
+          echo "  Backend (Laravel): knowledgepot/real-estate-connect-laravel:$LARAVEL_TAG"
+
+      - name: Build and Push Docker images
+        env:
+          WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
+          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+        run: |
+          # Build the React/Nginx image using its Dockerfile in the root context
+          docker build \
+            -t knowledgepot/real-estate-connect-app:$WEB_IMAGE_TAG \
+            -f Dockerfile \
+            .
+
+          # Build the Laravel backend image using its Dockerfile in the laravel_backend context
+          docker build \
+            -t knowledgepot/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG \
+            -f laravel_backend/Dockerfile \
+            ./laravel_backend
+
+          # Push the newly built images to Docker Hub
+          docker push knowledgepot/real-estate-connect-app:$WEB_IMAGE_TAG
+          docker push knowledgepot/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG
+
+      - name: Verify pushed images (Optional)
+        run: |
+          echo "Verifying images on Docker Hub by pulling them back..."
+          docker pull knowledgepot/real-estate-connect-app:${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
+          docker pull knowledgepot/real-estate-connect-laravel:${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+          echo "Images pulled successfully for verification."

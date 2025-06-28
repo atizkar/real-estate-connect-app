@@ -1,0 +1,71 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # MySQL Database Service
+  mysql_db:
+    image: mysql:8.0 # Using MySQL 8.0 image
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: laravel_real_estate # Database name for Laravel
+      MYSQL_ROOT_PASSWORD: root_password # Root password for MySQL (CHANGE THIS IN PRODUCTION!)
+      MYSQL_USER: laravel_user # User for Laravel application (CHANGE THIS IN PRODUCTION!)
+      MYSQL_PASSWORD: laravel_password # Password for Laravel user (CHANGE THIS IN PRODUCTION!)
+    volumes:
+      - db_data:/var/lib/mysql # Persist database data to a named volume
+    ports:
+      - "3306:3306" # Expose MySQL port to host for direct access (e.g., for database clients)
+    healthcheck:
+      # Health check to ensure MySQL is ready before dependent services start
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+      start_period: 30s # Give MySQL extra time to start initially
+
+  # Laravel Backend Application Service
+  laravel_app:
+    build:
+      context: ./laravel_backend # Build from the 'laravel_backend' directory
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Environment variables passed to the Laravel container
+      DB_CONNECTION: mysql
+      DB_HOST: mysql_db # Hostname for the database, matching the service name in this compose file
+      DB_PORT: 3306
+      DB_DATABASE: laravel_real_estate
+      DB_USERNAME: laravel_user
+      DB_PASSWORD: laravel_password
+      APP_KEY: base64:your_laravel_app_key_here # IMPORTANT: Replace this with a generated Laravel APP_KEY
+      APP_URL: http://localhost:3004 # Your frontend URL
+      APP_DEBUG: ${APP_DEBUG:-true} # Use env var or default to true for local dev
+      # For Laravel Sanctum, if used:
+      SANCTUM_STATEFUL_DOMAINS: localhost:3004 # Allow frontend domain for cookie-based authentication
+      SESSION_DOMAIN: localhost # Important for sharing sessions/cookies across subdomains or ports
+
+    depends_on:
+      # Ensure Laravel app starts only after MySQL is healthy
+      mysql_db:
+        condition: service_healthy
+
+  # Nginx Web Server for React Frontend and Laravel Proxy
+  nginx_web:
+    build:
+      context: . # Build from the current project root (where your React app and its Dockerfile are)
+      dockerfile: Dockerfile # Your existing Dockerfile for React/Nginx
+    restart: unless-stopped
+    ports:
+      - "3004:80" # Expose port 3002 on the host, mapping to Nginx's default port 80 inside the container
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro # Mount Nginx configuration read-only
+      # The React build output will be copied into the image by its Dockerfile, so no direct volume mount needed here for the app code itself.
+    depends_on:
+      # Ensure Nginx starts after the Laravel app is ready, as it proxies to Laravel
+      laravel_app:
+        condition: service_started # service_started is sufficient; Nginx just needs the Laravel container to be running
+    # Network mode is bridge by default, allowing services to communicate via their names (e.g., laravel_app, mysql_db)
+    # The LLM Studio proxy to host.docker.internal will still work on this default bridge network.
+
+    # Define named volumes for data persistence
+volumes:
+  db_data: # Volume for MySQL data, persists data across container restarts
