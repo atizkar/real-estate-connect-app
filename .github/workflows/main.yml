@@ -27,7 +27,7 @@ jobs:
         with:
           registry: docker.io
           username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }} # This should be your Docker Hub PAT with Write access
+          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Debug: Verify Docker Login via CLI
         run: |
           echo "Attempting Docker CLI login for debugging..."
