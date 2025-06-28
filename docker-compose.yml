@@ -39,11 +39,12 @@ services:
     volumes:
       - db_data:/var/lib/mysql # Persist database data
     healthcheck:
-      # Healthcheck to ensure database is ready
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u${MYSQL_USER}", "-p${MYSQL_PASSWORD}" ]
+      # Healthcheck to ensure database is ready (simplified)
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ] # Removed user/password from healthcheck
       timeout: 5s
       retries: 10
       interval: 3s
+      start_period: 20s # Give MySQL more time to truly start before checks begin
     networks:
       - app-network
 
