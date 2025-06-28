@@ -33,27 +33,15 @@ jobs:
         id: set_tags
         run: |
           # Get the branch name and sanitize it for use as a Docker tag
-          # Replaces slashes and other non-alphanumeric chars with hyphens, converts to lowercase
           BRANCH_NAME=$(echo "${{ github.ref }}" | sed -e "s/refs\/heads\///g" | sed -e "s/[^a-zA-Z0-9-]/-/g" | tr '[:upper:]' '[:lower:]')
-
-          # Determine the tag for the web (React/Nginx) image
+          WEB_TAG="$BRANCH_NAME"
+          LARAVEL_TAG="$BRANCH_NAME"
           if [ "$BRANCH_NAME" == "dev" ]; then
             WEB_TAG="latest"
-          else
-            WEB_TAG="$BRANCH_NAME"
-          fi
-
-          # Determine the tag for the Laravel (backend) image
-          if [ "$BRANCH_NAME" == "dev" ]; then
             LARAVEL_TAG="latest"
-          else
-            LARAVEL_TAG="$BRANCH_NAME"
           fi
-
-          # Output the tags for use in subsequent steps
-          echo "WEB_IMAGE_TAG=$WEB_TAG" >> $GITHUB_OUTPUT
-          echo "LARAVEL_IMAGE_TAG=$LARAVEL_TAG" >> $GITHUB_OUTPUT
-
+          echo "WEB_IMAGE_TAG=$WEB_OUTPUT" >> $GITHUB_OUTPUT
+          echo "LARAVEL_IMAGE_TAG=$LARAVEL_OUTPUT" >> $GITHUB_OUTPUT
           echo "Preparing to build and push images:"
           echo "  Frontend (React/Nginx): ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_TAG"
           echo "  Backend (Laravel): ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_TAG"
@@ -127,19 +115,24 @@ jobs:
       - name: Run Laravel Migrations
         run: |
           echo "Running Laravel migrations..."
-          sleep 5 # Give DB a moment after starting (healthcheck in compose should mostly handle this)
+          sleep 5
           docker compose exec -T laravel_app php artisan migrate --force
           echo "Laravel migrations completed."
+
+      - name: Clear Laravel Caches
+        run: |
+          echo "Clearing Laravel route and config caches..."
+          docker compose exec -T laravel_app php artisan route:clear
+          docker compose exec -T laravel_app php artisan config:clear
+          echo "Laravel caches cleared."
 
       - name: Perform Basic Application Test
         run: |
           echo "Waiting for web app to be accessible..."
-          # --- Increased sleep time and added Nginx logs for debugging ---
           sleep 45 # Increased sleep to allow more time for all services to stabilize
           echo "Nginx container logs:"
           docker compose logs nginx_web # Output Nginx logs for debugging
           echo "Attempting curl check..."
-          # --- End changes ---
           curl_status=$(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:3002)
           if [ "$curl_status" == "200" ]; then
             echo "Web app is accessible (HTTP 200 OK)."
