@@ -25,9 +25,9 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          # --- MODIFIED: Using DOCKER_USERNAME and DOCKER_PASSWORD secrets ---
+          registry: docker.io # Specify Docker Hub registry explicitly
           username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          password: ${{ secrets.DOCKER_PASSWORD }} # This should be your Docker Hub PAT with Write access
 
       - name: Set Image Tags
         id: set_tags
@@ -58,25 +58,38 @@ jobs:
           echo "  Frontend (React/Nginx): knowledgepot/real-estate-connect-app:$WEB_TAG"
           echo "  Backend (Laravel): knowledgepot/real-estate-connect-laravel:$LARAVEL_TAG"
 
-      - name: Build and Push Docker images
+      - name: Build React/Nginx Image
         env:
           WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
-          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
         run: |
-          # Build the React/Nginx image using its Dockerfile in the root context
+          echo "Building knowledgepot/real-estate-connect-app:$WEB_IMAGE_TAG"
           docker build \
             -t knowledgepot/real-estate-connect-app:$WEB_IMAGE_TAG \
             -f Dockerfile \
             .
 
-          # Build the Laravel backend image using its Dockerfile in the laravel_backend context
+      - name: Push React/Nginx Image
+        env:
+          WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
+        run: |
+          echo "Pushing knowledgepot/real-estate-connect-app:$WEB_IMAGE_TAG"
+          docker push knowledgepot/real-estate-connect-app:$WEB_IMAGE_TAG
+
+      - name: Build Laravel Image
+        env:
+          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+        run: |
+          echo "Building knowledgepot/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
           docker build \
             -t knowledgepot/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG \
             -f laravel_backend/Dockerfile \
             ./laravel_backend
 
-          # Push the newly built images to Docker Hub
-          docker push knowledgepot/real-estate-connect-app:$WEB_IMAGE_TAG
+      - name: Push Laravel Image
+        env:
+          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+        run: |
+          echo "Pushing knowledgepot/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
           docker push knowledgepot/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG
 
       - name: Verify pushed images (Optional)
