@@ -6,8 +6,10 @@ FROM php:8.2-fpm-alpine
 WORKDIR /var/www/html
 
 # Install system dependencies required for PHP extensions and Composer
+# Each package is on its own line, with a backslash for continuation.
+# No comments directly after the backslash to prevent parsing issues.
 RUN apk add --no-cache \
-    nginx \ # Nginx is included here if you want to swap to Nginx for serving Laravel directly in this container, but currently, we're using php-artisan-serve.
+    nginx \
     mysql-client \
     curl \
     git \
@@ -20,9 +22,9 @@ RUN apk add --no-cache \
     freetype-dev \
     sqlite-dev \
     postgresql-dev \
-    # Clean up build dependencies
+    # Clean up build dependencies after installation
     && rm -rf /var/cache/apk/* \
-    # Install PHP extensions
+    # Install PHP extensions using docker-php-ext-install
     && docker-php-ext-install pdo pdo_mysql opcache gd exif
 
 # Install Composer globally in the container
@@ -36,11 +38,8 @@ COPY . /var/www/html
 # --optimize-autoloader: Improves performance by optimizing Composer's autoloader
 RUN composer install --no-dev --optimize-autoloader
 
-# Generate Laravel APP_KEY (if not already present in .env)
-# This command generates a unique encryption key for your application.
-# It's crucial for security and should be run once during setup.
-# If you provide APP_KEY via docker-compose.yml environment, this step is not strictly necessary
-# as long as the .env file within the container reflects that.
+# Generate Laravel APP_KEY (if not already present in .env).
+# The '|| true' ensures the build doesn't fail if the key is already set or generated.
 RUN php artisan key:generate || true
 
 # Set correct permissions for storage and cache directories
@@ -56,6 +55,3 @@ EXPOSE 8000
 # Command to run Laravel's built-in development server
 # This makes the Laravel application accessible within the Docker network at port 8000
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
-
-# Alternative CMD for production with Nginx/php-fpm (if you choose that setup later):
-# CMD ["sh", "-c", "nginx -g 'daemon off;' && php-fpm"]
