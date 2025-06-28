@@ -33,6 +33,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 # Copy the entire Laravel application into the container
 COPY . /var/www/html
 
+# --- IMPORTANT FIX: Ensure .env exists before key generation ---
+# Copy .env.example to .env if .env doesn't exist.
+# This is crucial for `php artisan key:generate` to find its configuration file.
+RUN if [ ! -f .env ]; then cp .env.example .env; fi
+
 # Install PHP dependencies using Composer
 # --no-dev: Skips dev dependencies (good for production builds)
 # --optimize-autoloader: Improves performance by optimizing Composer's autoloader
