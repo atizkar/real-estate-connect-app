@@ -60,7 +60,7 @@ jobs:
 
       - name: Build React/Nginx Image
         env:
-          WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
+          WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }} # Ensure consistency with output variable
         run: |
           echo "Building ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG"
           docker build \
@@ -70,24 +70,24 @@ jobs:
 
       - name: Push React/Nginx Image
         env:
-          WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }}
+          WEB_IMAGE_TAG: ${{ steps.set_tags.outputs.WEB_IMAGE_TAG }} # Ensure consistency with output variable
         run: |
           echo "Pushing ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG"
           docker push ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-app:$WEB_IMAGE_TAG
 
       - name: Build Laravel Image
         env:
-          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }} # Ensure consistency with output variable
         run: |
           echo "Building ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
           docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_TAG \
+            -t ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG \ # Corrected variable name
             -f laravel_backend/Dockerfile \
             ./laravel_backend
 
       - name: Push Laravel Image
         env:
-          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }}
+          LARAVEL_IMAGE_TAG: ${{ steps.set_tags.outputs.LARAVEL_IMAGE_TAG }} # Ensure consistency with output variable
         run: |
           echo "Pushing ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG"
           docker push ${{ secrets.DOCKER_USERNAME }}/real-estate-connect-laravel:$LARAVEL_IMAGE_TAG
