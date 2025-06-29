@@ -1,5 +1,5 @@
 # docker-compose.yml
-version: '3.8'
+version: '3.8' # The warning about 'version' being obsolete is informational. It's safe to ignore for now, or remove the line entirely if you prefer a 'versionless' compose file (Docker Compose v2+).
 
 services:
   nginx_web:
@@ -13,9 +13,6 @@ services:
 
   laravel_app:
     image: ${DOCKER_USERNAME}/real-estate-connect-laravel:${LARAVEL_IMAGE_TAG}
-    ports:
-      # --- NEW: Expose Laravel's port to the host ---
-      - "8000:8000" # Maps host port 8000 to container port 8000
     environment:
       DB_CONNECTION: mysql
       DB_HOST: mysql_db
@@ -32,21 +29,28 @@ services:
   mysql_db:
     image: mysql:8.0
     environment:
+      # Ensure these variables are correctly passed and are valid for MySQL setup.
+      # Special characters in passwords might need escaping if hardcoded, but secrets should handle it.
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} # CRITICAL for initial setup
+      # Optional: To help with permissions, if that's an issue (less common in CI)
+      # PUID: 1000 # User ID
+      # PGID: 1000 # Group ID
     ports:
-      - "33061:3306" # Optional: Expose MySQL for local connection/tools
+      - "33060:3306" # Optional: Expose MySQL for local connection/tools
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/mysql # Persist database data
+      # Consider adding a custom MySQL configuration file for more detailed logging if needed
+      # - ./my.cnf:/etc/mysql/conf.d/my.cnf:ro
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ] # Basic ping, no auth needed here
       timeout: 5s
       retries: 10
       interval: 3s
-      start_period: 30s
-    # Removed: command: --verbose # This was causing the MySQL startup error
+      start_period: 30s # Increased start_period to give MySQL more time to initialize
+    command: --verbose # Add verbose logging for startup (will appear in 'docker compose logs mysql_db')
     networks:
       - app-network
 
@@ -55,4 +59,4 @@ networks:
     driver: bridge
 
 volumes:
-  db_data:
+  db_data: # Define the named volume for database persistence
