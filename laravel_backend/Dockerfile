@@ -31,8 +31,8 @@ RUN echo "--- Files in build context before COPY .env ---" && ls -la && echo "--
 # --- END DEBUGGING STEP ---
 
 # --- IMPORTANT CHANGE: Explicitly copy .env first ---
-# Corrected comment: Removed apostrophe to avoid parsing error
-COPY .env .env # Copy your local .env into the container working directory
+# Removed the problematic comment entirely to avoid parsing errors.
+COPY .env .env
 # --- END IMPORTANT CHANGE ---
 
 # Copy the rest of the Laravel application into the container
