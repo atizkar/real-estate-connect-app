@@ -37,16 +37,11 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Automatically log in the user after registration (using Sanctum or similar)
-        // For SPA authentication with Sanctum, you typically rely on session cookies.
-        // The frontend will make a POST to /sanctum/csrf-cookie first, then register.
-        // This 'Auth::login($user)' line is more for traditional web authentication,
-        // but can be used with Sanctum's session management.
-        Auth::login($user);
+        Auth::login($user); // Log in the user after registration
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user->only('id', 'name', 'email') // Return limited user data
+            'user' => $user->only('id', 'name', 'email')
         ], 201);
     }
 
@@ -76,8 +71,6 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // For Sanctum, ensure CSRF cookie is already obtained by frontend.
-        // User is now authenticated via session.
         $user = Auth::user();
 
         return response()->json([
@@ -94,10 +87,9 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        Auth::guard('web')->logout(); // Logout from web guard (session based)
-
-        $request->session()->invalidate(); // Invalidate the session
-        $request->session()->regenerateToken(); // Regenerate CSRF token
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json(['message' => 'Logged out successfully.']);
     }
@@ -123,8 +115,6 @@ class AuthController extends Controller
      */
     public function getUserPreferences(Request $request)
     {
-        // In a real app, this would fetch user-specific preferences from the database.
-        // For now, return mock data.
         if (Auth::check()) {
             return response()->json([
                 'preferences' => [
@@ -146,7 +136,6 @@ class AuthController extends Controller
     public function saveUserPreferences(Request $request)
     {
         if (Auth::check()) {
-            // In a real app, validate and save $request->all() preferences to the database
             return response()->json(['message' => 'Preferences saved (mock)!', 'preferences' => $request->all()]);
         }
         return response()->json(['message' => 'Unauthorized.'], 401);
@@ -160,8 +149,6 @@ class AuthController extends Controller
     public function getAgentListings(Request $request)
     {
         if (Auth::check()) {
-            // In a real app, fetch listings associated with the authenticated agent.
-            // For now, return mock data.
             return response()->json([
                 'listings' => [
                     ['id' => 1, 'title' => 'Mock Listing 1', 'location' => 'Suburb A', 'price' => '500000', 'description' => 'A beautiful mock home.'],
@@ -180,8 +167,6 @@ class AuthController extends Controller
     public function addAgentListing(Request $request)
     {
         if (Auth::check()) {
-            // In a real app, validate and save $request->all() as a new listing.
-            // Add a simple mock ID for the frontend to use
             $newListing = array_merge($request->all(), ['id' => rand(100, 999)]);
             return response()->json(['message' => 'Listing added (mock)!', 'listing' => $newListing], 201);
         }
@@ -197,7 +182,6 @@ class AuthController extends Controller
     public function deleteAgentListing(Request $request, $id)
     {
         if (Auth::check()) {
-            // In a real app, find and delete the listing by ID, ensuring ownership.
             return response()->json(['message' => "Listing {$id} deleted (mock)!"]);
         }
         return response()->json(['message' => 'Unauthorized.'], 401);
