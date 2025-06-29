@@ -26,6 +26,10 @@ RUN apk add --no-cache \
 # Install Composer globally in the container
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
+# --- DEBUGGING STEP: List contents of build context before COPY .env ---
+RUN echo "--- Files in build context before COPY .env ---" && ls -la && echo "--- END Files ---"
+# --- END DEBUGGING STEP ---
+
 # --- IMPORTANT CHANGE: Explicitly copy .env first ---
 # Corrected comment: Removed apostrophe to avoid parsing error
 COPY .env .env # Copy your local .env into the container working directory
