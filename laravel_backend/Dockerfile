@@ -27,11 +27,11 @@ RUN apk add --no-cache \
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
 # --- DEBUGGING STEP: List contents of build context before COPY .env ---
-RUN echo "--- Files in build context before COPY .env ---" && ls -la && echo "--- END Files ---"
+# Added a dummy argument to 'echo' to bust Docker's build cache for this step.
+RUN echo "--- Files in build context before COPY .env --- (Timestamp: $(date +%s))" && ls -la && echo "--- END Files ---"
 # --- END DEBUGGING STEP ---
 
 # --- IMPORTANT CHANGE: Explicitly copy .env first ---
-# Removed the problematic comment entirely to avoid parsing errors.
 COPY .env .env
 # --- END IMPORTANT CHANGE ---
 
