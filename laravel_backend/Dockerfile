@@ -32,7 +32,7 @@ RUN echo "--- Files in build context before COPY .env --- (Timestamp: $(date +%s
 # --- END DEBUGGING STEP ---
 
 # --- IMPORTANT CHANGE: Explicitly copy .env first ---
-COPY .env .env
+#COPY .env .env
 # --- END IMPORTANT CHANGE ---
 
 # Copy the rest of the Laravel application into the container
