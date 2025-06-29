@@ -27,7 +27,8 @@ RUN apk add --no-cache \
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
 # --- IMPORTANT CHANGE: Explicitly copy .env first ---
-COPY .env .env # Copy your local .env into the container's working directory
+# Corrected comment: Removed apostrophe to avoid parsing error
+COPY .env .env # Copy your local .env into the container working directory
 # --- END IMPORTANT CHANGE ---
 
 # Copy the rest of the Laravel application into the container
