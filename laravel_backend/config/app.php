@@ -107,6 +107,7 @@ return [
     | data for your database seeds. For example, this will be used to get
     | localized telephone numbers, street address information and more.
     |
+    |
     */
 
     'faker_locale' => 'en_US',
@@ -159,6 +160,7 @@ return [
         /*
          * Package Service Providers...
          */
+        Laravel\Sanctum\SanctumServiceProvider::class, // <-- ADD THIS LINE
 
         /*
          * Application Service Providers...
