@@ -37,6 +37,7 @@ services:
       - "33060:3306" # Expose MySQL for local connection/tools
     volumes:
       - db_data:/var/lib/mysql # Persist database data
+    command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ] # Basic ping, no auth needed here
       timeout: 5s
