@@ -8,6 +8,7 @@ const useAuth = () => useContext(AuthContext);
 
 // Base URL for your Laravel API
 const API_BASE_URL = 'http://localhost:3002/api';
+const BASE_URL = 'http://localhost:3002';
 
 // --- Placeholder Components for New Features ---
 
@@ -628,7 +629,7 @@ const RegisterPage = ({ navigate }) => {
 
     try {
       // First, get the CSRF cookie
-      await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`);
+      await fetch(`${BASE_URL}/sanctum/csrf-cookie`);
 
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
@@ -763,7 +764,7 @@ function App() {
   // Function to handle user login
   const login = async (email, password) => {
     // First, get the CSRF cookie
-    await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`);
+    await fetch(`${BASE_URL}/sanctum/csrf-cookie`);
 
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
