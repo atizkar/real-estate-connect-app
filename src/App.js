@@ -7,7 +7,7 @@ const AuthContext = createContext(null);
 const useAuth = () => useContext(AuthContext);
 
 // Base URL for your Laravel API
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:3002/api';
 
 // --- Placeholder Components for New Features ---
 
