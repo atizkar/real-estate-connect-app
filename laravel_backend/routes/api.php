@@ -24,14 +24,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Buyer Dashboard Routes (User specific data)
+    // Buyer Dashboard Routes
     Route::get('/user/preferences', [AuthController::class, 'getUserPreferences']);
     Route::post('/user/preferences', [AuthController::class, 'saveUserPreferences']);
 
-    // Agent Dashboard Routes (User specific data)
+    // Agent Dashboard Routes
     Route::get('/user/listings', [AuthController::class, 'getAgentListings']);
     Route::post('/user/listings', [AuthController::class, 'addAgentListing']);
     Route::delete('/user/listings/{id}', [AuthController::class, 'deleteAgentListing']);
+
+    // --- NEW FEATURE ROUTES ---
+    Route::get('/properties', [AuthController::class, 'getAvailableProperties']);
+    Route::get('/buyer-intent', [AuthController::class, 'getBuyerIntent']);
+    Route::get('/find-agent', [AuthController::class, 'findAgent']);
+    Route::get('/manage-reviews', [AuthController::class, 'manageReviews']);
+    Route::get('/exclusive-reports', [AuthController::class, 'getExclusiveReports']);
+    Route::get('/connect-website', [AuthController::class, 'connectWebsite']);
 
     // Add other protected routes here for Investor, Vendor, Developer dashboards etc.
     // E.g., Route::get('/investor/data', [InvestorController::class, 'getData']);
