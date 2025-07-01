@@ -6,9 +6,23 @@ const AuthContext = createContext(null);
 // Custom hook to use the authentication context
 const useAuth = () => useContext(AuthContext);
 
-// Base URL for your Laravel API
+// Base URL for your Laravel API (all API calls go through Nginx's /api proxy)
 const API_BASE_URL = 'http://localhost:3002/api';
 const BASE_URL = 'http://localhost:3002';
+
+// Utility function to get the CSRF token from cookie
+function getCsrfFromCookie() {
+  const name = 'XSRF-TOKEN=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookies = decodedCookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    let c = cookies[i].trim();
+    if (c.indexOf(name) === 0) {
+      return c.substring(name.length);
+    }
+  }
+  return '';
+}
 
 // --- Placeholder Components for New Features ---
 
@@ -41,6 +55,7 @@ const AvailablePropertiesPage = () => {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
           },
+          credentials: 'include', // Ensure cookies are sent
         });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -54,7 +69,7 @@ const AvailablePropertiesPage = () => {
       }
     };
     fetchProperties();
-  }, [user]);
+  }, [user, API_BASE_URL]); // Add API_BASE_URL to dependencies
 
   if (loading) return <div className="p-6 text-center text-gray-500">Loading properties...</div>;
   if (error) return <div className="p-6 text-red-600 text-center">Error: {error}</div>;
@@ -111,6 +126,7 @@ const BuyerIntentSystemPage = () => {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
           },
+          credentials: 'include',
         });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -124,7 +140,7 @@ const BuyerIntentSystemPage = () => {
       }
     };
     fetchIntent();
-  }, [user]);
+  }, [user, API_BASE_URL]);
 
   if (loading) return <div className="p-6 text-center text-gray-500">Loading buyer intent data...</div>;
   if (error) return <div className="p-6 text-red-600 text-center">Error: {error}</div>;
@@ -177,6 +193,7 @@ const FindAgentPage = () => {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
           },
+          credentials: 'include',
         });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -190,7 +207,7 @@ const FindAgentPage = () => {
       }
     };
     fetchAgents();
-  }, [user]);
+  }, [user, API_BASE_URL]);
 
   if (loading) return <div className="p-6 text-center text-gray-500">Loading agents...</div>;
   if (error) return <div className="p-6 text-red-600 text-center">Error: {error}</div>;
@@ -239,6 +256,7 @@ const ManageReviewsPage = () => {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
           },
+          credentials: 'include',
         });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -252,7 +270,7 @@ const ManageReviewsPage = () => {
       }
     };
     fetchReviews();
-  }, [user]);
+  }, [user, API_BASE_URL]);
 
   if (loading) return <div className="p-6 text-center text-gray-500">Loading reviews...</div>;
   if (error) return <div className="p-6 text-red-600 text-center">Error: {error}</div>;
@@ -300,6 +318,7 @@ const ExclusiveReportsPage = () => {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
           },
+          credentials: 'include',
         });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -313,7 +332,7 @@ const ExclusiveReportsPage = () => {
       }
     };
     fetchReports();
-  }, [user]);
+  }, [user, API_BASE_URL]);
 
   if (loading) return <div className="p-6 text-center text-gray-500">Loading reports...</div>;
   if (error) return <div className="p-6 text-red-600 text-center">Error: {error}</div>;
@@ -361,6 +380,7 @@ const ConnectWebsitePage = () => {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
           },
+          credentials: 'include',
         });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -374,7 +394,7 @@ const ConnectWebsitePage = () => {
       }
     };
     fetchWebsiteData();
-  }, [user]);
+  }, [user, API_BASE_URL]);
 
   if (loading) return <div className="p-6 text-center text-gray-500">Loading website connection data...</div>;
   if (error) return <div className="p-6 text-red-600 text-center">Error: {error}</div>;
@@ -629,14 +649,14 @@ const RegisterPage = ({ navigate }) => {
 
     try {
       // First, get the CSRF cookie
-      await fetch(`${BASE_URL}/sanctum/csrf-cookie`);
+      await fetch(`${BASE_URL}/sanctum/csrf-cookie`, { credentials: "include" }); // Use API_BASE_URL for consistency
 
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          //'X-Requested-With': 'XMLHttpRequest', // Important for Laravel to recognize AJAX
-          "X-XSRF-TOKEN": getCsrfFromCookie(), // custom function, see below
+          'X-Requested-With': 'XMLHttpRequest', // Important for Laravel to recognize AJAX
+          "X-XSRF-TOKEN": getCsrfFromCookie(),
         },
         credentials: "include",
         body: JSON.stringify({ name, email, password }),
@@ -722,21 +742,6 @@ function App() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('login'); // Default to login page
 
-  // Function to get the CSRF token from cookie:
-
-  function getCsrfFromCookie() {
-  const name = 'XSRF-TOKEN=';
-  const decodedCookie = decodeURIComponent(document.cookie);
-  const cookies = decodedCookie.split(';');
-  for (let i = 0; i < cookies.length; i++) {
-    let c = cookies[i].trim();
-    if (c.indexOf(name) === 0) {
-      return c.substring(name.length);
-    }
-  }
-  return '';
-}
-
   // Function to fetch user data after login/registration
   const fetchUser = async () => {
     try {
@@ -744,6 +749,7 @@ function App() {
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
         },
+        credentials: 'include', // Ensure cookies are sent
       });
       if (response.ok) {
         const data = await response.json();
@@ -781,14 +787,14 @@ function App() {
   // Function to handle user login
   const login = async (email, password) => {
     // First, get the CSRF cookie
-    await fetch(`${BASE_URL}/sanctum/csrf-cookie`);
+    await fetch(`${BASE_URL}/sanctum/csrf-cookie`, { credentials: "include" }); // Use API_BASE_URL for consistency
 
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        //'X-Requested-With': 'XMLHttpRequest',
-        "X-XSRF-TOKEN": getCsrfFromCookie(), // custom function, see below
+        'X-Requested-With': 'XMLHttpRequest',
+        "X-XSRF-TOKEN": getCsrfFromCookie(),
       },
       credentials: "include",
       body: JSON.stringify({ email, password }),
@@ -811,7 +817,9 @@ function App() {
         method: 'POST',
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
+          "X-XSRF-TOKEN": getCsrfFromCookie(), // Add CSRF token for logout
         },
+        credentials: "include", // Ensure cookies are sent
       });
       setUser(null);
       setCurrentPage('login');
