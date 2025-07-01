@@ -40,9 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/manage-reviews', [AuthController::class, 'manageReviews']);
     Route::get('/exclusive-reports', [AuthController::class, 'getExclusiveReports']);
     Route::get('/connect-website', [AuthController::class, 'connectWebsite']);
-    Route::middleware('web')->get('/sanctum/csrf-cookie', function () {
-        return response()->json(['csrf' => csrf_token()]);
-    });
+
 
     // Add other protected routes here for Investor, Vendor, Developer dashboards etc.
     // E.g., Route::get('/investor/data', [InvestorController::class, 'getData']);

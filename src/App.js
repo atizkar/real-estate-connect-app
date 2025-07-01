@@ -635,9 +635,10 @@ const RegisterPage = ({ navigate }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest', // Important for Laravel to recognize AJAX
+          //'X-Requested-With': 'XMLHttpRequest', // Important for Laravel to recognize AJAX
           "X-XSRF-TOKEN": getCsrfFromCookie(), // custom function, see below
         },
+        credentials: "include",
         body: JSON.stringify({ name, email, password }),
       });
 
@@ -786,9 +787,10 @@ function App() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
+        //'X-Requested-With': 'XMLHttpRequest',
         "X-XSRF-TOKEN": getCsrfFromCookie(), // custom function, see below
       },
+      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
 
