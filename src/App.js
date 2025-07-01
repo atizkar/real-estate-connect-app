@@ -636,6 +636,7 @@ const RegisterPage = ({ navigate }) => {
         headers: {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest', // Important for Laravel to recognize AJAX
+          "X-XSRF-TOKEN": getCsrfFromCookie(), // custom function, see below
         },
         body: JSON.stringify({ name, email, password }),
       });
@@ -720,6 +721,21 @@ function App() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('login'); // Default to login page
 
+  // Function to get the CSRF token from cookie:
+
+  function getCsrfFromCookie() {
+  const name = 'XSRF-TOKEN=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookies = decodedCookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    let c = cookies[i].trim();
+    if (c.indexOf(name) === 0) {
+      return c.substring(name.length);
+    }
+  }
+  return '';
+}
+
   // Function to fetch user data after login/registration
   const fetchUser = async () => {
     try {
@@ -771,6 +787,7 @@ function App() {
       headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        "X-XSRF-TOKEN": getCsrfFromCookie(), // custom function, see below
       },
       body: JSON.stringify({ email, password }),
     });
